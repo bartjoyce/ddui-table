@@ -1,4 +1,4 @@
-list(APPEND SOURCES
+list(APPEND ddui_table_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/model.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/model.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/style.hpp
@@ -6,4 +6,4 @@ list(APPEND SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/view.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/view.cpp
 )
-set(SOURCES ${SOURCES} PARENT_SCOPE)
+set(ddui_table_SOURCES ${ddui_table_SOURCES} PARENT_SCOPE)

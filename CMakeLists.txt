@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
-
 project(ddui-table CXX)
-
 add_subdirectory(src)
-
-add_library(ddui-table ${SOURCES})
-
+add_library(ddui-table ${ddui_table_SOURCES})
 target_link_libraries(ddui-table ddui)
+target_include_directories(ddui-table PUBLIC include)
