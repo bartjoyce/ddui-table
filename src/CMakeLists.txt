@@ -1,6 +1,8 @@
 list(APPEND ddui_table_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/model.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/model.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/settings.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/settings.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/style.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/style.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/view.hpp

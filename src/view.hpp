@@ -12,7 +12,9 @@
 #include <ddui/Context>
 #include <ddui/views/ScrollArea>
 #include <ddui/views/ItemArranger>
+#include <map>
 #include "model.hpp"
+#include "settings.hpp"
 
 namespace Table {
 
@@ -35,19 +37,11 @@ struct TableState {
     Model* source;
     
     // Private copy of the data
-    int private_copy_version_count;
+    long private_copy_ref;
     std::vector<std::string> headers;
-    std::vector<std::vector<std::string>> rows;
-    std::vector<bool> enabled_columns;
-    std::vector<int> column_widths;
-    std::vector<int> column_ordering;
-
-    // Header dragging state
-    struct {
-        int potential_column;
-        int active_column;
-        int initial_x;
-    } header_dragging;
+    std::vector<std::map<std::string, bool>> column_values;
+    Settings settings;
+    Results results;
 
     // Column resizing state
     struct {
@@ -64,6 +58,12 @@ struct TableState {
     bool show_column_manager = false;
     TableItemArrangerModel item_arranger_model;
     ItemArranger::State item_arranger_state;
+
+    // Filter overlay
+    struct {
+        int active_column;
+        int x, y;
+    } filter_overlay;
 };
 
 void update(TableState* table_state, Context ctx);

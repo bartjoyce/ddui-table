@@ -14,18 +14,54 @@
 
 namespace Table {
 
-struct Model {
-    Model();
+class Model {
+    public:
+        virtual long ref() = 0; // returns a number that changes
+                                // when the underlying data of the
+                                // model changes.
+        virtual int columns() = 0;
+        virtual int rows() = 0;
+        virtual std::string header_text(int col) = 0;
+        virtual std::string cell_text(int row, int col) = 0;
+        virtual std::vector<int> key() = 0;
+};
 
-    int version_count; // increments when state is changed
-    std::vector<std::string> headers;
-    std::vector<std::vector<std::string>> rows;
-    std::vector<int> key;
+class BasicModel : public Model {
+    public:
+        BasicModel();
+        BasicModel(std::vector<std::string> headers,
+                   std::vector<std::string> key);
+        void insert_row(std::vector<std::string> row);
+
+        // Implement Model methods
+        long ref() {
+            return version_count;
+        }
+        int columns() {
+            return headers.size();
+        }
+        int rows() {
+            return data.size();
+        }
+        std::string header_text(int col) {
+            return headers[col];
+        }
+        std::string cell_text(int row, int col) {
+            return data[row][col];
+        }
+        std::vector<int> key() {
+            return key_;
+        }
+
+    private:
+        int version_count; // increments when state is changed
+        std::vector<std::string> headers;
+        std::vector<std::vector<std::string>> data;
+        std::vector<int> key_;
 };
 
 int get_header_index(Model* model, std::string header);
-void set_key(Model* model, std::vector<std::string> key);
-void insert_row(Model* model, std::vector<std::string> row);
+std::vector<std::string> all_headers(Model* model);
 
 }
 

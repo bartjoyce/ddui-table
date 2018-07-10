@@ -10,51 +10,41 @@
 
 namespace Table {
 
-Model::Model() {
+BasicModel::BasicModel() {
     version_count = 0;
 }
 
-int get_header_index(Model* model, std::string header) {
-    for (int j = 0; j < model->headers.size(); ++j) {
-        if (model->headers[j] == header) {
-            return j;
-        }
-    }
+BasicModel::BasicModel(std::vector<std::string> headers,
+                       std::vector<std::string> key) {
+    version_count = 1;
+    this->headers = std::move(headers);
 
-    return -1;
-}
-
-void set_key(Model* model, std::vector<std::string> key) {
-    if (model->headers.empty()) {
+    if (this->headers.empty()) {
         throw "Headers not set yet";
     }
 
-    if (!model->key.empty()) {
-        throw "Key already set";
-    }
-
     for (auto& header : key) {
-        auto index = get_header_index(model, header);
+        auto index = get_header_index(this, header);
         if (index == -1) {
             throw "Header used as key is not present in table";
         }
-        model->key.push_back(index);
+        this->key_.push_back(index);
     }
 }
 
-void insert_row(Model* model, std::vector<std::string> row) {
-    if (row.size() != model->headers.size()) {
+void BasicModel::insert_row(std::vector<std::string> row) {
+    if (row.size() != headers.size()) {
         throw "Row and header has different number of columns";
     }
 
-    model->version_count++;
+    version_count++;
 
-    if (!model->key.empty()) {
+    if (!key_.empty()) {
         int index = -1;
-        for (int i = 0; i < model->rows.size(); ++i) {
+        for (int i = 0; i < data.size(); ++i) {
             bool match = true;
-            for (int j = 0; j < model->key.size(); ++j) {
-                if (model->rows[i][model->key[j]] != row[model->key[j]]) {
+            for (auto j : key_) {
+                if (data[i][j] != row[j]) {
                     match = false;
                     break;
                 }
@@ -66,12 +56,36 @@ void insert_row(Model* model, std::vector<std::string> row) {
         }
 
         if (index != -1) {
-            model->rows[index] = std::move(row);
+            data[index] = std::move(row);
             return;
         }
     }
 
-    model->rows.push_back(std::move(row));
+    data.push_back(std::move(row));
+}
+
+int get_header_index(Model* model, std::string header) {
+    auto num_cols = model->columns();
+    
+    for (int j = 0; j < num_cols; ++j) {
+        if (model->header_text(j) == header) {
+            return j;
+        }
+    }
+
+    return -1;
+}
+
+std::vector<std::string> all_headers(Model* model) {
+    auto num_cols = model->columns();
+
+    std::vector<std::string> vector;
+    vector.reserve(num_cols);
+    for (int i = 0; i < num_cols; ++i) {
+        vector.push_back(model->header_text(i));
+    }
+
+    return vector;
 }
 
 }
