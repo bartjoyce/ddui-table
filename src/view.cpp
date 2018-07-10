@@ -23,7 +23,11 @@ static void update_table_content(TableState* state, Context ctx);
 static void update_table_headers(TableState* state, Context ctx);
 static void update_column_separators(TableState* state, Context ctx);
 static void update_filter_overlay(TableState* state, Context ctx);
+static void update_filter_buttons(TableState* state, Context ctx);
+static void update_filter_values(TableState* state, Context ctx);
+static void draw_filter_overlay_path(Context ctx, int x, int y, int arrow_width, int arrow_height, int width, int height, int border_radius);
 static void draw_header_label(NVGcontext* vg, int x, int y, int width, const char* content, int gear_size);
+static std::vector<std::string> prepare_filter_value_list(TableState* state, int column);
 
 TableState::TableState() {
 
@@ -89,6 +93,9 @@ void update(TableState* state, Context ctx) {
     Overlay::handle_overlay((void*)state, [state](Context ctx) {
         update_filter_overlay(state, ctx);
     });
+    if (!Overlay::is_open((void*)state)) {
+        state->filter_overlay.active_column = -1;
+    }
 
     // Update function bar
     int function_bar_height;
@@ -239,7 +246,13 @@ void update_table_headers(TableState* state, Context ctx) {
                 state->filter_overlay.active_column = j;
                 state->filter_overlay.x = ctx.x + x + settings.column_widths[j] - gear_size / 2;
                 state->filter_overlay.y = ctx.y + style::CELL_HEIGHT - 2 * MARGIN;
+                state->filter_overlay.value_list = prepare_filter_value_list(state, j);
+                state->filter_overlay.scroll_area_state = ScrollArea::ScrollAreaState();
                 Overlay::open((void*)state);
+            }
+            
+            if (state->filter_overlay.active_column == j) {
+                nvgFillColor(ctx.vg, style::COLOR_TEXT_ROW);
             }
             
             nvgText(ctx.vg, x + settings.column_widths[j] - gear_size + MARGIN,
@@ -324,27 +337,230 @@ void update_column_separators(TableState* state, Context ctx) {
     }
 }
 
+void draw_filter_overlay_path(Context ctx, int x, int y, int arrow_width, int arrow_height, int width, int height, int border_radius) {
+    y += arrow_height;
+    x -= width / 2;
+
+    auto w = width;
+    auto h = height;
+    auto aw = arrow_width;
+    auto ah = arrow_height;
+    auto r = border_radius;
+    
+    nvgBeginPath(ctx.vg);
+    nvgMoveTo(ctx.vg, x + w / 2 - aw, y);
+    nvgLineTo(ctx.vg, x + w / 2, y - ah);
+    nvgLineTo(ctx.vg, x + w / 2 + aw, y);
+    nvgLineTo(ctx.vg, x + w - r, y);
+    nvgArcTo (ctx.vg, x + w, y, x + w, y + r, r);
+    nvgLineTo(ctx.vg, x + w, y + h - r);
+    nvgArcTo (ctx.vg, x + w, y + h, x + w - r, y + h, r);
+    nvgLineTo(ctx.vg, x + r, y + h);
+    nvgArcTo (ctx.vg, x, y + h, x, y + h - r, r);
+    nvgLineTo(ctx.vg, x, y + r);
+    nvgArcTo (ctx.vg, x, y, x + r, y, r);
+    nvgClosePath(ctx.vg);
+}
+
 void update_filter_overlay(TableState* state, Context ctx) {
     constexpr auto ARROW_HEIGHT = 10;
     constexpr auto ARROW_WIDTH = 6;
 
     constexpr auto BOX_WIDTH = 200;
     constexpr auto BOX_HEIGHT = 200;
+    constexpr auto BOX_BORDER_RADIUS = 4;
+
+    constexpr auto FILTER_BUTTONS_HEIGHT = 40;
 
     auto center_x = state->filter_overlay.x;
     auto center_y = state->filter_overlay.y;
 
-    nvgFillColor(ctx.vg, nvgRGB(255, 255, 255));
-    nvgBeginPath(ctx.vg);
-    nvgMoveTo(ctx.vg, center_x - BOX_WIDTH / 2, center_y + ARROW_HEIGHT);
-    nvgLineTo(ctx.vg, center_x - ARROW_WIDTH, center_y + ARROW_HEIGHT);
-    nvgLineTo(ctx.vg, center_x, center_y);
-    nvgLineTo(ctx.vg, center_x + ARROW_WIDTH, center_y + ARROW_HEIGHT);
-    nvgLineTo(ctx.vg, center_x + BOX_WIDTH / 2, center_y + ARROW_HEIGHT);
-    nvgLineTo(ctx.vg, center_x + BOX_WIDTH / 2, center_y + ARROW_HEIGHT + BOX_HEIGHT);
-    nvgLineTo(ctx.vg, center_x - BOX_WIDTH / 2, center_y + ARROW_HEIGHT + BOX_HEIGHT);
-    nvgClosePath(ctx.vg);
+    // Fill in box background
+    draw_filter_overlay_path(ctx, center_x, center_y, ARROW_WIDTH, ARROW_HEIGHT, BOX_WIDTH, BOX_HEIGHT, BOX_BORDER_RADIUS);
+    nvgFillColor(ctx.vg, style::COLOR_BG_HEADER);
     nvgFill(ctx.vg);
+    
+    nvgStrokeColor(ctx.vg, style::COLOR_SEPARATOR);
+    nvgStrokeWidth(ctx.vg, 1.0);
+    nvgStroke(ctx.vg);
+
+    // Draw buttons
+    {
+        auto child_ctx = child_context(ctx, center_x - BOX_WIDTH / 2,
+                                       center_y + ARROW_HEIGHT, BOX_WIDTH, FILTER_BUTTONS_HEIGHT);
+        update_filter_buttons(state, child_ctx);
+        nvgRestore(ctx.vg);
+    }
+
+    // Draw values
+    {
+        auto child_ctx = child_context(ctx, center_x - BOX_WIDTH / 2,
+                                       center_y + ARROW_HEIGHT + FILTER_BUTTONS_HEIGHT, BOX_WIDTH,
+                                       BOX_HEIGHT - FILTER_BUTTONS_HEIGHT - BOX_BORDER_RADIUS);
+        update_filter_values(state, child_ctx);
+        nvgRestore(ctx.vg);
+    }
+
+    // Draw box outline
+    draw_filter_overlay_path(ctx, center_x, center_y, ARROW_WIDTH, ARROW_HEIGHT, BOX_WIDTH, BOX_HEIGHT, BOX_BORDER_RADIUS);
+    nvgStrokeColor(ctx.vg, style::COLOR_SEPARATOR);
+    nvgStrokeWidth(ctx.vg, 1.0);
+    nvgStroke(ctx.vg);
+    
+    // Catch clicks in the box
+    if (mouse_hit(ctx, center_x - BOX_WIDTH / 2, center_y + ARROW_HEIGHT, BOX_WIDTH, BOX_HEIGHT)) {
+        ctx.mouse->accepted = true;
+    }
+}
+
+static int button_state = 0;
+constexpr int STATE_ASC = 1;
+constexpr int STATE_DESC = 2;
+constexpr int STATE_GROUP = 3;
+
+void update_filter_buttons(TableState* state, Context ctx) {
+    
+    constexpr auto MARGIN = 6;
+    constexpr auto BORDER_RADIUS = 4;
+    
+    auto button_height = ctx.height - 2 * MARGIN;
+    auto button_width_1 = (ctx.width - 2 * MARGIN) / 3;
+    auto button_width_3 = button_width_1;
+    auto button_width_2 = ctx.width - 2 * MARGIN - button_width_1 - button_width_3 - 2;
+    
+    auto y = MARGIN;
+    auto text_y = y + button_height / 2;
+    auto x = MARGIN;
+    
+    {
+        if (mouse_hit(ctx, x, y, button_width_1, button_height)) {
+            ctx.mouse->accepted = true;
+            button_state = button_state == STATE_ASC ? 0 : STATE_ASC;
+        }
+        
+        if (button_state == STATE_ASC) {
+            nvgFillColor(ctx.vg, style::COLOR_SEPARATOR_ACTIVE);
+        } else if (mouse_over(ctx, x, y, button_width_1, button_height)) {
+            nvgFillColor(ctx.vg, style::COLOR_BG_ROW_EVEN);
+            *ctx.cursor = CURSOR_POINTING_HAND;
+        } else {
+            nvgFillColor(ctx.vg, style::COLOR_BG_ROW_EVEN);
+        }
+        nvgBeginPath(ctx.vg);
+        nvgRoundedRectVarying(ctx.vg, x, y,
+                              button_width_1, button_height,
+                              BORDER_RADIUS, 0, 0, BORDER_RADIUS);
+        nvgFill(ctx.vg);
+        
+        nvgFillColor(ctx.vg, nvgRGB(255, 255, 255));
+        nvgFontFace(ctx.vg, "regular");
+        nvgTextAlign(ctx.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+        nvgText(ctx.vg, x + button_width_1 / 2, text_y, "ASC", NULL);
+        nvgTextAlign(ctx.vg, NVG_ALIGN_LEFT);
+        
+        x += button_width_1;
+    }
+    
+    {
+        x += 1;
+    
+        if (mouse_hit(ctx, x, y, button_width_2, button_height)) {
+            ctx.mouse->accepted = true;
+            button_state = button_state == STATE_DESC ? 0 : STATE_DESC;
+        }
+        
+        if (button_state == STATE_DESC) {
+            nvgFillColor(ctx.vg, style::COLOR_SEPARATOR_ACTIVE);
+        } else if (mouse_over(ctx, x, y, button_width_2 - 2, button_height)) {
+            nvgFillColor(ctx.vg, style::COLOR_BG_ROW_EVEN);
+            *ctx.cursor = CURSOR_POINTING_HAND;
+        } else {
+            nvgFillColor(ctx.vg, style::COLOR_BG_ROW_EVEN);
+        }
+        nvgBeginPath(ctx.vg);
+        nvgRect(ctx.vg, x, y, button_width_2, button_height);
+        nvgFill(ctx.vg);
+        
+        nvgFillColor(ctx.vg, nvgRGB(255, 255, 255));
+        nvgFontFace(ctx.vg, "regular");
+        nvgTextAlign(ctx.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+        nvgText(ctx.vg, x + button_width_2 / 2, text_y, "DESC", NULL);
+        nvgTextAlign(ctx.vg, NVG_ALIGN_LEFT);
+        
+        x += button_width_2 + 1;
+    }
+    
+    {
+        if (mouse_hit(ctx, x, y, button_width_1, button_height)) {
+            ctx.mouse->accepted = true;
+            Overlay::close((void*)state);
+            button_state = button_state == STATE_GROUP ? 0 : STATE_GROUP;
+        }
+        
+        if (button_state == STATE_GROUP) {
+            nvgFillColor(ctx.vg, style::COLOR_SEPARATOR_ACTIVE);
+        } else if (mouse_over(ctx, x, y, button_width_3, button_height)) {
+            nvgFillColor(ctx.vg, style::COLOR_BG_ROW_EVEN);
+            *ctx.cursor = CURSOR_POINTING_HAND;
+        } else {
+            nvgFillColor(ctx.vg, style::COLOR_BG_ROW_EVEN);
+        }
+        nvgBeginPath(ctx.vg);
+        nvgRoundedRectVarying(ctx.vg, x, y,
+                              button_width_3, button_height,
+                              0, BORDER_RADIUS, BORDER_RADIUS, 0);
+        nvgFill(ctx.vg);
+        
+        nvgFillColor(ctx.vg, nvgRGB(255, 255, 255));
+        nvgFontFace(ctx.vg, "regular");
+        nvgTextAlign(ctx.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+        nvgText(ctx.vg, x + button_width_3 / 2, text_y, "GROUP", NULL);
+        nvgTextAlign(ctx.vg, NVG_ALIGN_LEFT);
+        
+        x += button_width_3;
+    }
+    
+}
+
+void update_filter_values(TableState* state, Context ctx) {
+    
+    constexpr int VALUE_HEIGHT = 30;
+    
+    auto inner_height = VALUE_HEIGHT * (1 + state->filter_overlay.value_list.size());
+
+    ScrollArea::update(&state->filter_overlay.scroll_area_state, ctx, ctx.width, inner_height, [&](Context ctx) {
+    
+        auto j = state->filter_overlay.active_column;
+        auto& value_list = state->filter_overlay.value_list;
+        auto& filter = state->settings.filters[j];
+        
+        int y = 0;
+        
+        {
+            if (!filter.enabled) {
+                nvgFillColor(ctx.vg, style::COLOR_TEXT_HEADER);
+                nvgFontFace(ctx.vg, "bold");
+            } else {
+                nvgFillColor(ctx.vg, style::COLOR_TEXT_ROW);
+                nvgFontFace(ctx.vg, "regular");
+            }
+            draw_text_in_box(ctx.vg, 5, y, ctx.width - 10, VALUE_HEIGHT, "Select all");
+            y += VALUE_HEIGHT;
+        }
+        
+        for (auto& value : value_list) {
+            if (!filter.enabled || filter.allowed_values.find(value) != filter.allowed_values.end()) {
+                nvgFillColor(ctx.vg, style::COLOR_TEXT_HEADER);
+                nvgFontFace(ctx.vg, "bold");
+            } else {
+                nvgFillColor(ctx.vg, style::COLOR_TEXT_ROW);
+                nvgFontFace(ctx.vg, "regular");
+            }
+            draw_text_in_box(ctx.vg, 5, y, ctx.width - 10, VALUE_HEIGHT, value.c_str());
+            y += VALUE_HEIGHT;
+        }
+        
+    });
 }
 
 void refresh_model(TableState* state) {
@@ -424,6 +640,13 @@ void refresh_model(TableState* state) {
                 values.insert(std::make_pair(model->cell_text(i, j), true));
             }
         }
+        
+        state->column_values.push_back(std::move(values));
+    }
+    
+    // If the overlay is open, update the value list
+    if (state->filter_overlay.active_column != -1) {
+        state->filter_overlay.value_list = prepare_filter_value_list(state, state->filter_overlay.active_column);
     }
 
     state->private_copy_ref = model->ref();
@@ -440,6 +663,47 @@ void refresh_results(TableState* state) {
 
     state->content_width = calculate_table_width(state);
     state->content_height = style::CELL_HEIGHT * (state->results.row_indices.size() + 1);
+}
+
+std::vector<std::string> prepare_filter_value_list(TableState* state, int column) {
+    auto& values_existing = state->column_values[column];
+
+    // For a disabled filter just show all existing values
+    auto& filter = state->settings.filters[column];
+    if (!filter.enabled) {
+        std::vector<std::string> output;
+        for (auto& pair : values_existing) {
+            output.push_back(pair.first);
+        }
+        return output;
+    }
+    
+    // For an enabled filter, find the intersection of
+    // values_in_filter and values_existing.
+    auto& values_in_filter = filter.allowed_values;
+    for (auto& pair : values_in_filter) {
+        pair.second = false;
+    }
+    
+    for (auto& pair : values_existing) {
+        auto lookup = values_in_filter.find(pair.first);
+        if (lookup != values_in_filter.end()) {
+            lookup->second = true;
+        }
+    }
+    
+    // Output non-existing values in the filter first
+    std::vector<std::string> output;
+    for (auto& pair : values_in_filter) {
+        if (pair.second == false) {
+            output.push_back(pair.first);
+        }
+    }
+    for (auto& pair : values_existing) {
+        output.push_back(pair.first);
+    }
+    
+    return output;
 }
 
 int TableItemArrangerModel::count() {

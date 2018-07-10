@@ -63,6 +63,8 @@ struct TableState {
     struct {
         int active_column;
         int x, y;
+        std::vector<std::string> value_list;
+        ScrollArea::ScrollAreaState scroll_area_state;
     } filter_overlay;
 };
 
