@@ -11,22 +11,27 @@
 #include "filter.hpp"
 #include <ddui/util/draw_text_in_box>
 #include <ddui/util/entypo>
+#include <ddui/keyboard>
 #include <ddui/views/ContextMenu>
 #include <ddui/views/Overlay>
 
 namespace Table {
 
-static void refresh_model(TableState* state);
-void refresh_results(TableState* state);
-static int calculate_table_width(TableState* table_state);
-static void update_function_bar(TableState* state, Context ctx, int* bar_height);
-static void update_table_content(TableState* state, Context ctx);
-static void update_column_separators(TableState* state, Context ctx);
-static void update_group_headings(TableState* state, Context ctx);
-static void update_table_headers(TableState* state, Context ctx);
-static void update_column_header(TableState* state, Context ctx, int j, int& x, int y);
+static void refresh_model(State* state);
+void refresh_results(State* state);
+static int calculate_table_width(State* table_state);
+static void update_function_bar(State* state, Context ctx, int* bar_height);
+static void update_table_content(State* state, Context ctx);
+static void update_column_separators(State* state, Context ctx);
+static void update_group_headings(State* state, Context ctx);
+static void update_table_headers(State* state, Context ctx);
+static void update_column_header(State* state, Context ctx, int j, int& x, int y);
+static void set_selection(State* state, int i, int j);
+static void clear_selection(State* state);
+static void cancel_editing(State* state);
+static void update_editable_field(State* state, Context ctx);
 
-TableState::TableState() {
+State::State() {
 
     source = NULL;
     private_copy_ref = -1;
@@ -36,7 +41,10 @@ TableState::TableState() {
 
     content_width = 1;
     content_height = style::CELL_HEIGHT;
-  
+
+    selection.row = -1;
+    selection.column = -1;
+
     item_arranger_model.state = this;
 
     item_arranger_state.model = &item_arranger_model;
@@ -45,10 +53,18 @@ TableState::TableState() {
     item_arranger_state.color_background_enabled = nvgRGB(76,  207, 255);
     item_arranger_state.color_text_enabled = nvgRGB(0, 0, 0);
     item_arranger_state.color_background_vacant = nvgRGBAf(1, 1, 1, 0.3);
+    
+    editable_field.is_open = false;
+    editable_field.is_waiting_for_second_click = false;
+    editable_field.state.model = &editable_field.model;
+    editable_field.state.border_radius = 0;
+    editable_field.state.margin = 6;
+    editable_field.model.regular_font = "regular";
+    TextEdit::set_style(&editable_field.model, false, 14, nvgRGB(0x00, 0x00, 0x00));
 
 }
 
-int calculate_table_width(TableState* state) {
+int calculate_table_width(State* state) {
     auto& settings = state->settings;
     auto& results = state->results;
 
@@ -61,7 +77,7 @@ int calculate_table_width(TableState* state) {
     return width;
 }
 
-void update(TableState* state, Context ctx) {
+void update(State* state, Context ctx) {
   
     refresh_model(state);
   
@@ -115,13 +131,29 @@ void update(TableState* state, Context ctx) {
         update_table_content(state, ctx);
         update_column_separators(state, ctx);
         update_group_headings(state, ctx);
+        update_editable_field(state, ctx);
         update_table_headers(state, ctx);
     });
     nvgRestore(ctx.vg);
 
+    // Handle selection change
+    if (state->selection.candidate_row != -1 && !ctx.mouse->accepted) {
+        ctx.mouse->accepted = true;
+        set_selection(state, state->selection.candidate_row,
+                             state->selection.candidate_column);
+        refresh_results(state);
+        *ctx.must_repaint = true;
+    }
+    if (state->selection.row != -1 && mouse_hit(ctx, 0, 0, ctx.width, ctx.height)) {
+        ctx.mouse->accepted = true;
+        clear_selection(state);
+        refresh_results(state);
+        *ctx.must_repaint = true;
+    }
+
 }
 
-void update_function_bar(TableState* state, Context ctx, int* bar_height) {
+void update_function_bar(State* state, Context ctx, int* bar_height) {
 
     int y = 0;
   
@@ -144,7 +176,7 @@ void update_function_bar(TableState* state, Context ctx, int* bar_height) {
   
 }
 
-void update_table_content(TableState* state, Context ctx) {
+void update_table_content(State* state, Context ctx) {
     auto model = state->source;
     auto& settings = state->settings;
     auto& results = state->results;
@@ -172,6 +204,12 @@ void update_table_content(TableState* state, Context ctx) {
         nvgFontFace(ctx.vg, "medium");
         nvgFontSize(ctx.vg, style::TEXT_SIZE_ROW);
     
+        int sel_i = state->selection.row;
+        int sel_j = state->selection.column;
+
+        state->selection.candidate_row = -1;
+        state->selection.candidate_column = -1;
+
         int x = 0;
         for (int j : results.column_indices) {
             int y = style::CELL_HEIGHT;
@@ -180,6 +218,21 @@ void update_table_content(TableState* state, Context ctx) {
                     // This row is a group heading
                     y += style::CELL_HEIGHT;
                     continue;
+                }
+                if (sel_i == i && sel_j == j) {
+                    nvgFillColor(ctx.vg, style::COLOR_BG_CELL_ACTIVE);
+                    nvgBeginPath(ctx.vg);
+                    nvgRect(ctx.vg, x, y, settings.column_widths[j], style::CELL_HEIGHT);
+                    nvgFill(ctx.vg);
+                    nvgFillColor(ctx.vg, style::COLOR_TEXT_ROW);
+                    
+                    state->editable_field.cell_x = x;
+                    state->editable_field.cell_y = y;
+                    state->editable_field.cell_width = settings.column_widths[j];
+                }
+                if (mouse_hit(ctx, x, y, settings.column_widths[j], style::CELL_HEIGHT)) {
+                    state->selection.candidate_row = i;
+                    state->selection.candidate_column = j;
                 }
                 draw_centered_text_in_box(ctx.vg, x, y,
                                           settings.column_widths[j], style::CELL_HEIGHT,
@@ -191,7 +244,7 @@ void update_table_content(TableState* state, Context ctx) {
     }
 }
 
-void update_table_headers(TableState* state, Context ctx) {
+void update_table_headers(State* state, Context ctx) {
     auto& results = state->results;
 
     // Header background
@@ -208,7 +261,7 @@ void update_table_headers(TableState* state, Context ctx) {
     }
 }
 
-void update_column_header(TableState* state, Context ctx, int j, int& x, int y) {
+void update_column_header(State* state, Context ctx, int j, int& x, int y) {
     auto& settings = state->settings;
 
     // Header option button
@@ -305,7 +358,7 @@ void update_column_header(TableState* state, Context ctx, int j, int& x, int y) 
     x += settings.column_widths[j] + style::SEPARATOR_WIDTH;
 }
 
-void update_column_separators(TableState* state, Context ctx) {
+void update_column_separators(State* state, Context ctx) {
     auto& settings = state->settings;
     auto& results = state->results;
     auto& column_resizing = state->column_resizing;
@@ -359,7 +412,7 @@ void update_column_separators(TableState* state, Context ctx) {
     }
 }
 
-void update_group_headings(TableState* state, Context ctx) {
+void update_group_headings(State* state, Context ctx) {
     if (state->settings.grouped_column == -1) {
         return;
     }
@@ -408,6 +461,14 @@ void update_group_headings(TableState* state, Context ctx) {
         nvgBeginPath(ctx.vg);
         nvgRect(ctx.vg, x, y, width, style::CELL_HEIGHT);
         nvgFill(ctx.vg);
+        
+        // Border line
+        nvgStrokeColor(ctx.vg, style::COLOR_SEPARATOR);
+        nvgStrokeWidth(ctx.vg, 1.0);
+        nvgBeginPath(ctx.vg);
+        nvgMoveTo(ctx.vg, x, y);
+        nvgLineTo(ctx.vg, x + width, y);
+        nvgStroke(ctx.vg);
         
         // Draw expand/collapse button
         if (mouse_over(ctx, button_x - 2, y, button_width + 2, style::CELL_HEIGHT)) {
@@ -465,7 +526,7 @@ void update_group_headings(TableState* state, Context ctx) {
     
 }
 
-void refresh_model(TableState* state) {
+void refresh_model(State* state) {
     auto model = state->source;
     if (model == NULL) {
         return; // No source data to refresh
@@ -526,6 +587,8 @@ void refresh_model(TableState* state) {
         for (int j = 0; j < num_cols; ++j) {
             state->headers.push_back(model->header_text(j));
         }
+
+        clear_selection(state);
     }
 
     // Find all column values
@@ -547,12 +610,52 @@ void refresh_model(TableState* state) {
         state->filter_overlay.value_list = prepare_filter_value_list(state, state->filter_overlay.active_column);
     }
 
+    // If there's an active selection, update it
+    if (state->selection.row != -1) {
+        auto key = model->key();
+
+        // No key, simply index based
+        if (key.empty()) {
+            
+            // Reset the selection if the row doesn't exist
+            if (state->selection.row >= model->rows()) {
+                clear_selection(state);
+            }
+        } else {
+
+            // Since it's key-based, we have to find the new
+            // index.
+            bool found = false;
+            for (int i = 0; i < model->rows(); ++i) {
+                bool match = true;
+                for (int j = 0; j < key.size(); ++j) {
+                    if (model->cell_text(i, key[j]) != state->selection.row_key[j]) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match) {
+                    found = true;
+                    if (state->selection.row != i) {
+                        set_selection(state, i, state->selection.column);
+                    } 
+                    break;
+                }
+            }
+
+            // Row no longer exists, clear the selection
+            if (!found) {
+                clear_selection(state);
+            }
+        }
+    }
+
     state->private_copy_ref = model->ref();
 
     refresh_results(state);
 }
 
-void refresh_results(TableState* state) {
+void refresh_results(State* state) {
     auto model = state->source;
     auto& settings = state->settings;
 
@@ -581,8 +684,99 @@ void refresh_results(TableState* state) {
     // (Re)apply the settings
     state->results = apply_settings(*model, settings);
 
+    // Compute dimensions for scroll area
     state->content_width = calculate_table_width(state);
     state->content_height = style::CELL_HEIGHT * (state->results.row_indices.size() + 1);
+
+    // If there's a selection, confirm that it's included in the result
+    if (state->selection.row != -1) {
+        bool found_row = false;
+        for (int i : state->results.row_indices) {
+            if (state->selection.row == i) {
+                found_row = true;
+                break;
+            }
+        }
+        
+        bool found_col = false;
+        for (int j : state->results.column_indices) {
+            if (state->selection.column == j) {
+                found_col = true;
+                break;
+            }
+        }
+
+        // If the selection is not visible in the result grid, clear it
+        if (!found_row || !found_col) {
+            clear_selection(state);
+        }
+    }
+}
+
+void set_selection(State* state, int i, int j) {
+    state->selection.row = state->selection.candidate_row;
+    state->selection.column = state->selection.candidate_column;
+    state->selection.row_key.clear();
+
+    auto key = state->source->key();
+    if (!key.empty()) {
+        auto i = state->selection.row;
+        for (auto j : key) {
+            state->selection.row_key.push_back(state->source->cell_text(i, j));
+        }
+    }
+
+    cancel_editing(state);
+
+    state->editable_field.is_waiting_for_second_click = true;
+    state->editable_field.click_time = std::chrono::high_resolution_clock::now();
+}
+
+void clear_selection(State* state) {
+    state->selection.row = -1;
+    state->selection.column = -1;
+    state->selection.row_key.clear();
+
+    cancel_editing(state);
+}
+
+void cancel_editing(State* state) {
+    state->editable_field.is_open = false;
+}
+
+void update_editable_field(State* state, Context ctx) {
+    // Dealing with the double-click
+    if (state->editable_field.is_waiting_for_second_click &&
+        mouse_hit(ctx, state->editable_field.cell_x, state->editable_field.cell_y,
+                  state->editable_field.cell_width, style::CELL_HEIGHT)) {
+
+        auto current_time = std::chrono::high_resolution_clock::now();
+        auto time_elapsed = std::chrono::duration_cast<std::chrono::duration<double>>
+                            (current_time - state->editable_field.click_time).count();
+        state->editable_field.is_waiting_for_second_click = false;
+
+        if (time_elapsed >= 1.0) {
+            return;
+        }
+
+        state->editable_field.is_open = true;
+        auto value = state->source->cell_text(state->selection.row, state->selection.column);
+        TextEdit::set_text_content(&state->editable_field.model, value.c_str());
+        keyboard::focus(ctx, &state->editable_field.state);
+    }
+
+    // It's not open!
+    if (!state->editable_field.is_open) {
+        return;
+    }
+
+    auto child_ctx = child_context(ctx, state->editable_field.cell_x,
+                                        state->editable_field.cell_y,
+                                        state->editable_field.cell_width,
+                                        style::CELL_HEIGHT);
+    PlainTextBox::update(&state->editable_field.state, child_ctx);
+    nvgRestore(ctx.vg);
+
 }
 
 int TableItemArrangerModel::count() {

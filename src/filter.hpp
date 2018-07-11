@@ -13,8 +13,8 @@
 
 namespace Table {
 
-void update_filter_overlay(TableState* state, Context ctx);
-std::vector<std::string> prepare_filter_value_list(TableState* state, int column);
+void update_filter_overlay(State* state, Context ctx);
+std::vector<std::string> prepare_filter_value_list(State* state, int column);
 
 }
 

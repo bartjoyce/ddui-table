@@ -13,14 +13,14 @@
 
 namespace Table {
 
-void refresh_results(TableState* state);
-static void update_filter_buttons(TableState* state, Context ctx);
-static void update_filter_values(TableState* state, Context ctx);
+void refresh_results(State* state);
+static void update_filter_buttons(State* state, Context ctx);
+static void update_filter_values(State* state, Context ctx);
 static void draw_filter_overlay_path(Context ctx, int x, int y);
 static bool draw_filter_value(Context ctx, int y, bool active, const char* label);
 static void get_box_position(Context ctx, int center_x, int center_y, int* box_x, int* box_y);
 
-void update_filter_overlay(TableState* state, Context ctx) {
+void update_filter_overlay(State* state, Context ctx) {
     using namespace style::filter_overlay;
 
     auto center_x = state->filter_overlay.x;
@@ -61,7 +61,7 @@ void update_filter_overlay(TableState* state, Context ctx) {
     }
 }
 
-std::vector<std::string> prepare_filter_value_list(TableState* state, int column) {
+std::vector<std::string> prepare_filter_value_list(State* state, int column) {
     auto& values_existing = state->column_values[column];
 
     // For a disabled filter just show all existing values
@@ -147,7 +147,7 @@ bool draw_filter_button(Context ctx, int x, int y, int width, int height, Button
     return false;
 }
 
-void update_filter_buttons(TableState* state, Context ctx) {
+void update_filter_buttons(State* state, Context ctx) {
     using namespace style::filter_overlay;
     
     auto& settings = state->settings;
@@ -191,7 +191,7 @@ void update_filter_buttons(TableState* state, Context ctx) {
     
 }
 
-void update_filter_values(TableState* state, Context ctx) {
+void update_filter_values(State* state, Context ctx) {
     using namespace style::filter_overlay;
     
     auto inner_height = VALUE_HEIGHT * (1 + state->filter_overlay.value_list.size());

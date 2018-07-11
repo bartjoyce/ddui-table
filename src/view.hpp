@@ -12,13 +12,15 @@
 #include <ddui/Context>
 #include <ddui/views/ScrollArea>
 #include <ddui/views/ItemArranger>
+#include <ddui/views/PlainTextBox>
+#include <chrono>
 #include <map>
 #include "model.hpp"
 #include "settings.hpp"
 
 namespace Table {
 
-struct TableState;
+struct State;
 
 class TableItemArrangerModel : public ItemArranger::Model {
     public:
@@ -28,11 +30,11 @@ class TableItemArrangerModel : public ItemArranger::Model {
         void set_enabled(int index, bool enabled);
         void reorder(int old_index, int new_index);
   
-        TableState* state;
+        State* state;
 };
 
-struct TableState {
-    TableState();
+struct State {
+    State();
 
     Model* source;
     
@@ -66,9 +68,26 @@ struct TableState {
         std::vector<std::string> value_list;
         ScrollArea::ScrollAreaState scroll_area_state;
     } filter_overlay;
+
+    // Selection state
+    struct {
+        int row, column;
+        int candidate_row, candidate_column;
+        std::vector<std::string> row_key;
+    } selection;
+
+    // Editable field
+    struct {
+        bool is_open;
+        bool is_waiting_for_second_click;
+        std::chrono::high_resolution_clock::time_point click_time;
+        TextEdit::Model model;
+        PlainTextBox::PlainTextBoxState state;
+        int cell_x, cell_y, cell_width;
+    } editable_field;
 };
 
-void update(TableState* table_state, Context ctx);
+void update(State* state, Context ctx);
 
 }
 

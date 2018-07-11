@@ -15,6 +15,7 @@ namespace style {
 
 static NVGcolor COLOR_BG_ROW_EVEN              = nvgRGB(0x42, 0x42, 0x42); // #424242
 static NVGcolor COLOR_BG_ROW_ODD               = nvgRGB(0x4f, 0x4f, 0x4f); // #4f4f4f
+static NVGcolor COLOR_BG_CELL_ACTIVE           = nvgRGB(0x2a, 0x9f, 0xd6); // #2a9fd6
 static NVGcolor COLOR_BG_HEADER                = nvgRGB(0x22, 0x22, 0x22); // #222222
 static NVGcolor COLOR_BG_GROUP_HEADING         = nvgRGB(0x77, 0x77, 0x77); // #777777
 static NVGcolor COLOR_TEXT_ROW                 = nvgRGB(0xff, 0xff, 0xff); // #ffffff
