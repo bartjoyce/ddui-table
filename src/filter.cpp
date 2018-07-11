@@ -9,6 +9,7 @@
 #include "filter.hpp"
 #include "style.hpp"
 #include <ddui/util/draw_text_in_box>
+#include <ddui/views/Overlay>
 
 namespace Table {
 
@@ -164,7 +165,7 @@ void update_filter_buttons(TableState* state, Context ctx) {
     
     auto ascending  = (settings.sort_column == j && settings.sort_ascending);
     auto descending = (settings.sort_column == j && !settings.sort_ascending);
-    auto grouped = false;
+    auto grouped = (settings.grouped_column == j);
     
     if (draw_filter_button(ctx, x1, y, button_width_1, button_height,
                            FORM_LEFT_MOST, ascending, "ASC")) {
@@ -182,7 +183,10 @@ void update_filter_buttons(TableState* state, Context ctx) {
 
     if (draw_filter_button(ctx, x3, y, button_width_3, button_height,
                            FORM_RIGHT_MOST, grouped, "GROUP")) {
-        // TODO: implement grouping
+        settings.grouped_column = grouped ? -1 : j;
+        settings.group_collapsed.clear();
+        refresh_results(state);
+        Overlay::close((void*)state);
     }
     
 }
@@ -332,11 +336,11 @@ bool draw_filter_value(Context ctx, int y, bool active, const char* label) {
     int x = VALUE_MARGIN + VALUE_SQUARE_SIZE + 2 * VALUE_SQUARE_MARGIN;
     draw_text_in_box(ctx.vg, x, y, ctx.width - x - VALUE_MARGIN, VALUE_HEIGHT, label);
     
-    if (mouse_over(ctx, x, y, ctx.width - x - VALUE_MARGIN, VALUE_HEIGHT)) {
+    if (mouse_over(ctx, VALUE_MARGIN, y, ctx.width - 2 * VALUE_MARGIN, VALUE_HEIGHT)) {
         *ctx.cursor = CURSOR_POINTING_HAND;
     }
     
-    if (mouse_hit(ctx, x, y, ctx.width - x - VALUE_MARGIN, VALUE_HEIGHT)) {
+    if (mouse_hit(ctx, VALUE_MARGIN, y, ctx.width - 2 * VALUE_MARGIN, VALUE_HEIGHT)) {
         ctx.mouse->accepted = true;
         return true;
     }

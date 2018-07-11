@@ -28,11 +28,21 @@ struct Settings {
     bool sort_ascending;
 
     std::vector<ColumnFilter> filters;
+
+    int grouped_column; // -1 when ungrouped
+    std::map<std::string, bool> group_collapsed;
+};
+
+struct GroupHeading {
+    int position;
+    std::string value;
+    int count;
 };
 
 struct Results {
     std::vector<int> column_indices;
     std::vector<int> row_indices;
+    std::vector<GroupHeading> group_headings;
 };
 
 Results apply_settings(Model& model, Settings& settings);

@@ -21,8 +21,9 @@ void refresh_results(TableState* state);
 static int calculate_table_width(TableState* table_state);
 static void update_function_bar(TableState* state, Context ctx, int* bar_height);
 static void update_table_content(TableState* state, Context ctx);
-static void update_table_headers(TableState* state, Context ctx);
 static void update_column_separators(TableState* state, Context ctx);
+static void update_group_headings(TableState* state, Context ctx);
+static void update_table_headers(TableState* state, Context ctx);
 static void update_column_header(TableState* state, Context ctx, int j, int& x, int y);
 
 TableState::TableState() {
@@ -51,7 +52,7 @@ int calculate_table_width(TableState* state) {
     auto& settings = state->settings;
     auto& results = state->results;
 
-    int width = style::SEPARATOR_WIDTH * state->source->columns();
+    int width = style::SEPARATOR_WIDTH * results.column_indices.size();
 
     for (int j : results.column_indices) {
         width += settings.column_widths[j];
@@ -61,7 +62,7 @@ int calculate_table_width(TableState* state) {
 }
 
 void update(TableState* state, Context ctx) {
-
+  
     refresh_model(state);
   
     // Process context menu
@@ -69,7 +70,11 @@ void update(TableState* state, Context ctx) {
         int toggle = ContextMenu::process_action(ctx, (void*)state);
         if (toggle == 0) {
             state->show_column_manager = !state->show_column_manager;
-            *ctx.must_repaint = true;
+        }
+        if (toggle == 1) {
+            state->settings.grouped_column = -1;
+            state->settings.group_collapsed.clear();
+            refresh_results(state);
         }
     }
     if (mouse_hit_secondary(ctx, 0, 0, ctx.width, ctx.height)) {
@@ -78,6 +83,12 @@ void update(TableState* state, Context ctx) {
             ContextMenu::Item item;
             item.label = "Manage Columns";
             item.checked = state->show_column_manager;
+            items.push_back(item);
+        }
+        if (state->settings.grouped_column != -1) {
+            ContextMenu::Item item;
+            item.label = "Reset Grouping";
+            item.checked = false;
             items.push_back(item);
         }
         int x = ctx.mouse->x - ctx.x;
@@ -102,8 +113,9 @@ void update(TableState* state, Context ctx) {
     ScrollArea::update(&state->scroll_area_state, child_ctx,
                        state->content_width, state->content_height, [&](Context ctx) {
         update_table_content(state, ctx);
-        update_table_headers(state, ctx);
         update_column_separators(state, ctx);
+        update_group_headings(state, ctx);
+        update_table_headers(state, ctx);
     });
     nvgRestore(ctx.vg);
 
@@ -164,6 +176,11 @@ void update_table_content(TableState* state, Context ctx) {
         for (int j : results.column_indices) {
             int y = style::CELL_HEIGHT;
             for (int i : results.row_indices) {
+                if (i == -1) {
+                    // This row is a group heading
+                    y += style::CELL_HEIGHT;
+                    continue;
+                }
                 draw_centered_text_in_box(ctx.vg, x, y,
                                           settings.column_widths[j], style::CELL_HEIGHT,
                                           model->cell_text(i, j).c_str());
@@ -342,6 +359,112 @@ void update_column_separators(TableState* state, Context ctx) {
     }
 }
 
+void update_group_headings(TableState* state, Context ctx) {
+    if (state->settings.grouped_column == -1) {
+        return;
+    }
+
+    constexpr int BUTTON_SIZE = 28;
+
+    auto& model = *state->source;
+    auto& settings = state->settings;
+    auto& results = state->results;
+    
+    float ascender, descender, line_height;
+    float bounds[4];
+    
+    // Measure expand/collapse button
+    nvgFontFace(ctx.vg, "entypo");
+    nvgFontSize(ctx.vg, BUTTON_SIZE);
+    
+    nvgTextMetrics(ctx.vg, &ascender, &descender, &line_height);
+    nvgTextBounds(ctx.vg, 0, 0, entypo::BLACK_DOWNPOINTING_SMALL_TRIANGLE, NULL, bounds);
+    int x = state->scroll_area_state.scroll_x;
+    float button_x = x + style::GROUP_HEADING_MARGIN;
+    float button_y = (style::CELL_HEIGHT - line_height) / 2 + ascender;
+    float button_width = bounds[2] - bounds[0];
+    
+    // Prepare & measure text
+    auto header_text = model.header_text(settings.grouped_column);
+    char buffer1[header_text.size() + 10];
+    char buffer2[10];
+    sprintf(buffer1, "  %s:  ", header_text.c_str());
+    
+    nvgFontFace(ctx.vg, "regular");
+    nvgFontSize(ctx.vg, style::TEXT_SIZE_GROUP_HEADING);
+    nvgTextMetrics(ctx.vg, &ascender, &descender, &line_height);
+    nvgTextBounds(ctx.vg, 0, 0, buffer1, NULL, bounds);
+    float text_y = (style::CELL_HEIGHT - line_height) / 2 + ascender;
+    float column_text_x = button_x + button_width;
+    float column_text_width = bounds[2] - bounds[0];
+    
+    for (auto& heading : results.group_headings) {
+        auto collapsed = settings.group_collapsed[heading.value];
+        int y = (1 + heading.position) * style::CELL_HEIGHT;
+        int width = ctx.clip.x2 - ctx.clip.x1;
+        
+        // Fill background
+        nvgFillColor(ctx.vg, style::COLOR_BG_GROUP_HEADING);
+        nvgBeginPath(ctx.vg);
+        nvgRect(ctx.vg, x, y, width, style::CELL_HEIGHT);
+        nvgFill(ctx.vg);
+        
+        // Draw expand/collapse button
+        if (mouse_over(ctx, button_x - 2, y, button_width + 2, style::CELL_HEIGHT)) {
+            *ctx.cursor = CURSOR_POINTING_HAND;
+            nvgFillColor(ctx.vg, style::COLOR_TEXT_GROUP_HEADING_HOVER);
+        } else {
+            nvgFillColor(ctx.vg, style::COLOR_TEXT_GROUP_HEADING);
+        }
+        if (mouse_hit(ctx, button_x - 2, y, button_width + 2, style::CELL_HEIGHT)) {
+            ctx.mouse->accepted = true;
+            settings.group_collapsed[heading.value] = !collapsed;
+            refresh_results(state);
+            *ctx.must_repaint = true;
+            return;
+        }
+        nvgFontFace(ctx.vg, "entypo");
+        nvgFontSize(ctx.vg, BUTTON_SIZE);
+        nvgText(ctx.vg, button_x, y + button_y,
+                collapsed ? entypo::BLACK_RIGHTPOINTING_SMALL_TRIANGLE : entypo::BLACK_DOWNPOINTING_SMALL_TRIANGLE, NULL);
+        
+        // Draw column title
+        if (mouse_over(ctx, column_text_x, y, column_text_width, style::CELL_HEIGHT)) {
+            *ctx.cursor = CURSOR_POINTING_HAND;
+            nvgFillColor(ctx.vg, style::COLOR_TEXT_GROUP_HEADING_HOVER);
+        } else {
+            nvgFillColor(ctx.vg, style::COLOR_TEXT_GROUP_HEADING);
+        }
+        if (mouse_hit(ctx, column_text_x, y, column_text_width, style::CELL_HEIGHT)) {
+            ctx.mouse->accepted = true;
+            state->filter_overlay.active_column = settings.grouped_column;
+            state->filter_overlay.x = ctx.x + column_text_x + column_text_width / 2;
+            state->filter_overlay.y = ctx.y + y + style::CELL_HEIGHT - 2;
+            state->filter_overlay.value_list = prepare_filter_value_list(state, settings.grouped_column);
+            state->filter_overlay.scroll_area_state = ScrollArea::ScrollAreaState();
+            Overlay::open((void*)state);
+        }
+        nvgFontFace(ctx.vg, "regular");
+        nvgFontSize(ctx.vg, style::TEXT_SIZE_GROUP_HEADING);
+        nvgText(ctx.vg, column_text_x, y + text_y, buffer1, NULL);
+        
+        // Draw value text
+        nvgFontFace(ctx.vg, "bold");
+        nvgFillColor(ctx.vg, style::COLOR_TEXT_GROUP_HEADING);
+        nvgTextBounds(ctx.vg, 0, 0, heading.value.c_str(), NULL, bounds);
+        float value_text_x = column_text_x + column_text_width;
+        float value_text_width = bounds[2] - bounds[0];
+        nvgText(ctx.vg, value_text_x, y + text_y, heading.value.c_str(), NULL);
+        
+        // Draw count text
+        nvgFontFace(ctx.vg, "regular");
+        float count_text_x = value_text_x + value_text_width;
+        sprintf(buffer2, " (%d)", heading.count);
+        nvgText(ctx.vg, count_text_x, y + text_y, buffer2, NULL);
+    }
+    
+}
+
 void refresh_model(TableState* state) {
     auto model = state->source;
     if (model == NULL) {
@@ -396,18 +519,13 @@ void refresh_model(TableState* state) {
         }
         
         settings.sort_column = -1;
+
+        settings.grouped_column = -1;
         
         state->headers.clear();
         for (int j = 0; j < num_cols; ++j) {
             state->headers.push_back(model->header_text(j));
         }
-
-        settings.filters[2].enabled = true;
-        settings.filters[2].allowed_values.insert(std::make_pair("1", true));
-        settings.filters[2].allowed_values.insert(std::make_pair("2", true));
-        settings.filters[2].allowed_values.insert(std::make_pair("3", true));
-        settings.filters[2].allowed_values.insert(std::make_pair("4", true));
-        settings.filters[2].allowed_values.insert(std::make_pair("other", true));
     }
 
     // Find all column values
@@ -437,6 +555,28 @@ void refresh_model(TableState* state) {
 void refresh_results(TableState* state) {
     auto model = state->source;
     auto& settings = state->settings;
+
+    // If we're grouping, update the group_collapsed map
+    if (settings.grouped_column != -1) {
+
+        auto j = settings.grouped_column;
+
+        auto previous_group_collapsed = std::move(settings.group_collapsed);
+        auto next_group_collapsed = std::map<std::string, bool>();
+
+        for (int i = 0; i < model->rows(); ++i) {
+            auto value = model->cell_text(i, j);
+            auto lookup = previous_group_collapsed.find(value);
+            if (lookup == previous_group_collapsed.end()) {
+                next_group_collapsed.insert(std::make_pair(value, false));
+            } else {
+                next_group_collapsed.insert(std::make_pair(value, lookup->second));
+            }
+        }
+
+        settings.group_collapsed = std::move(next_group_collapsed);
+
+    }
 
     // (Re)apply the settings
     state->results = apply_settings(*model, settings);
