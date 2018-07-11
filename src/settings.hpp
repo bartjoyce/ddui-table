@@ -14,12 +14,6 @@
 
 namespace Table {
 
-enum Ordering {
-    UNORDERED,
-    ORDER_ASCENDING,
-    ORDER_DESCENDING
-};
-
 struct ColumnFilter {
     bool enabled;
     std::map<std::string, bool> allowed_values;
@@ -30,8 +24,8 @@ struct Settings {
     std::vector<bool> column_enabled;
     std::vector<int> column_ordering;
 
-    Ordering sorting_order;
-    int sorting_column;
+    int sort_column; // = -1 when unsorted
+    bool sort_ascending;
 
     std::vector<ColumnFilter> filters;
 };

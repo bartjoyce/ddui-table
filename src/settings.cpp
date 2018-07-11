@@ -47,6 +47,21 @@ Results apply_settings(Model& model, Settings& settings) {
     
     // Step 2. Apply sorting
     
+    if (settings.sort_column != -1) {
+        auto j = settings.sort_column;
+    
+        std::function<bool(int,int)> compare;
+        if (settings.sort_ascending) {
+            compare = [&](int i1, int i2) {
+                return strcmp(model.cell_text(i1, j).c_str(), model.cell_text(i2, j).c_str()) < 0;
+            };
+        } else {
+            compare = [&](int i1, int i2) {
+                return strcmp(model.cell_text(i1, j).c_str(), model.cell_text(i2, j).c_str()) > 0;
+            };
+        }
+        std::sort(results.row_indices.begin(), results.row_indices.end(), compare);
+    }
     
     // Step 3. Apply column reordering, enabling
     
