@@ -34,6 +34,7 @@ namespace filter_overlay {
     static NVGcolor COLOR_BG_BUTTON        = COLOR_BG_ROW_EVEN;
     static NVGcolor COLOR_BG_BUTTON_ACTIVE = COLOR_SEPARATOR_ACTIVE;
     static NVGcolor COLOR_TEXT_BUTTON      = COLOR_TEXT_ROW;
+    static NVGcolor COLOR_VALUE_SEPARATOR  = COLOR_BG_ROW_ODD;
     constexpr int ARROW_HEIGHT = 10;
     constexpr int ARROW_WIDTH = 6;
     constexpr int BOX_WIDTH = 200;
@@ -43,6 +44,11 @@ namespace filter_overlay {
     constexpr int BUTTONS_AREA_MARGIN = 6;
     constexpr int BUTTON_BORDER_RADIUS = 4;
     constexpr int BUTTON_SPACING = 1;
+    constexpr int VALUE_HEIGHT = 30;
+    constexpr int VALUE_MARGIN = 5;
+    constexpr int VALUE_SQUARE_SIZE = 10;
+    constexpr int VALUE_SQUARE_MARGIN = 10;
+    constexpr int VALUE_SQUARE_BORDER_RADIUS = 2;
 
 }
 
