@@ -29,6 +29,7 @@ static void update_column_header(State* state, Context ctx, int j, int& x, int y
 static void set_selection(State* state, int i, int j);
 static void clear_selection(State* state);
 static void cancel_editing(State* state);
+static void submit_editing(State* state);
 static void update_editable_field(State* state, Context ctx);
 
 State::State() {
@@ -744,6 +745,20 @@ void cancel_editing(State* state) {
     state->editable_field.is_open = false;
 }
 
+void submit_editing(State* state) {
+    state->editable_field.is_open = false;
+    
+    auto i = state->selection.row;
+    auto j = state->selection.column;
+    
+    TextEdit::Selection selection = { 0 };
+    selection.b_index = state->editable_field.model.lines.front().characters.size();
+    
+    auto value = TextEdit::get_text_content(&state->editable_field.model, selection);
+    state->source->set_cell_text(i, j, value.get());
+
+}
+
 void update_editable_field(State* state, Context ctx) {
     // Dealing with the double-click
     if (state->editable_field.is_waiting_for_second_click &&
@@ -759,8 +774,14 @@ void update_editable_field(State* state, Context ctx) {
             return;
         }
 
+        auto i = state->selection.row;
+        auto j = state->selection.column;
+        if (!state->source->cell_editable(i, j)) {
+            return;
+        }
+
         state->editable_field.is_open = true;
-        auto value = state->source->cell_text(state->selection.row, state->selection.column);
+        auto value = state->source->cell_text(i, j);
         TextEdit::set_text_content(&state->editable_field.model, value.c_str());
         keyboard::focus(ctx, &state->editable_field.state);
     }
@@ -768,6 +789,19 @@ void update_editable_field(State* state, Context ctx) {
     // It's not open!
     if (!state->editable_field.is_open) {
         return;
+    }
+
+    if (keyboard::has_key_event(ctx, &state->editable_field.state)) {
+        if (ctx.key->action == keyboard::ACTION_PRESS &&
+            ctx.key->key == keyboard::KEY_ENTER) {
+            keyboard::consume_key_event(ctx);
+        }
+        if (ctx.key->action == keyboard::ACTION_RELEASE &&
+            ctx.key->key == keyboard::KEY_ENTER) {
+            submit_editing(state);
+            keyboard::consume_key_event(ctx);
+            return;
+        }
     }
 
     auto child_ctx = child_context(ctx, state->editable_field.cell_x,

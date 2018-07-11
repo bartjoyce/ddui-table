@@ -171,6 +171,11 @@ void update_filter_buttons(State* state, Context ctx) {
                            FORM_LEFT_MOST, ascending, "ASC")) {
         settings.sort_column = ascending ? -1 : j;
         settings.sort_ascending = true;
+        if (grouped) {
+            settings.grouped_column = -1;
+            settings.group_collapsed.clear();
+            Overlay::close((void*)state);
+        }
         refresh_results(state);
     }
 
@@ -178,6 +183,11 @@ void update_filter_buttons(State* state, Context ctx) {
                            FORM_MIDDLE, descending, "DESC")) {
         settings.sort_column = descending ? -1 : j;
         settings.sort_ascending = false;
+        if (grouped) {
+            settings.grouped_column = -1;
+            settings.group_collapsed.clear();
+            Overlay::close((void*)state);
+        }
         refresh_results(state);
     }
 
@@ -185,6 +195,9 @@ void update_filter_buttons(State* state, Context ctx) {
                            FORM_RIGHT_MOST, grouped, "GROUP")) {
         settings.grouped_column = grouped ? -1 : j;
         settings.group_collapsed.clear();
+        if (ascending || descending) {
+            settings.sort_column = -1;
+        }
         refresh_results(state);
         Overlay::close((void*)state);
     }

@@ -24,6 +24,8 @@ class Model {
         virtual std::string header_text(int col) = 0;
         virtual std::string cell_text(int row, int col) = 0;
         virtual std::vector<int> key() = 0;
+        virtual bool cell_editable(int row, int col) = 0;
+        virtual void set_cell_text(int row, int col, std::string text) = 0;
 };
 
 class BasicModel : public Model {
@@ -32,6 +34,7 @@ class BasicModel : public Model {
         BasicModel(std::vector<std::string> headers,
                    std::vector<std::string> key);
         void insert_row(std::vector<std::string> row);
+        bool editable;
 
         // Implement Model methods
         long ref() {
@@ -51,6 +54,13 @@ class BasicModel : public Model {
         }
         std::vector<int> key() {
             return key_;
+        }
+        bool cell_editable(int row, int col) {
+            return editable;
+        }
+        void set_cell_text(int row, int col, std::string text) {
+            data[row][col] = text;
+            ++version_count;
         }
 
     private:

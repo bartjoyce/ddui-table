@@ -12,6 +12,7 @@ namespace Table {
 
 BasicModel::BasicModel() {
     version_count = 0;
+    editable = true;
 }
 
 BasicModel::BasicModel(std::vector<std::string> headers,
