@@ -83,7 +83,9 @@ struct State {
         std::chrono::high_resolution_clock::time_point click_time;
         TextEdit::Model model;
         PlainTextBox::PlainTextBoxState state;
+        int row, column;
         int cell_x, cell_y, cell_width;
+        std::string current_cell_text;
     } editable_field;
 };
 

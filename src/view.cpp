@@ -28,8 +28,7 @@ static void update_table_headers(State* state, Context ctx);
 static void update_column_header(State* state, Context ctx, int j, int& x, int y);
 static void set_selection(State* state, int i, int j);
 static void clear_selection(State* state);
-static void cancel_editing(State* state);
-static void submit_editing(State* state);
+static void stop_editing(State* state);
 static void update_editable_field(State* state, Context ctx);
 
 State::State() {
@@ -87,6 +86,7 @@ void update(State* state, Context ctx) {
         int toggle = ContextMenu::process_action(ctx, (void*)state);
         if (toggle == 0) {
             state->show_column_manager = !state->show_column_manager;
+            *ctx.must_repaint = true;
         }
         if (toggle == 1) {
             state->settings.grouped_column = -1;
@@ -727,7 +727,7 @@ void set_selection(State* state, int i, int j) {
         }
     }
 
-    cancel_editing(state);
+    stop_editing(state);
 
     state->editable_field.is_waiting_for_second_click = true;
     state->editable_field.click_time = std::chrono::high_resolution_clock::now();
@@ -738,25 +738,28 @@ void clear_selection(State* state) {
     state->selection.column = -1;
     state->selection.row_key.clear();
 
-    cancel_editing(state);
+    stop_editing(state);
 }
 
-void cancel_editing(State* state) {
-    state->editable_field.is_open = false;
-}
+void stop_editing(State* state) {
+    if (!state->editable_field.is_open) {
+        return;
+    }
 
-void submit_editing(State* state) {
     state->editable_field.is_open = false;
     
-    auto i = state->selection.row;
-    auto j = state->selection.column;
+    auto i = state->editable_field.row;
+    auto j = state->editable_field.column;
     
     TextEdit::Selection selection = { 0 };
     selection.b_index = state->editable_field.model.lines.front().characters.size();
     
-    auto value = TextEdit::get_text_content(&state->editable_field.model, selection);
-    state->source->set_cell_text(i, j, value.get());
-
+    auto buffer = TextEdit::get_text_content(&state->editable_field.model, selection);
+    auto value = std::string(buffer.get());
+    
+    if (state->editable_field.current_cell_text != value) {
+        state->source->set_cell_text(i, j, value);
+    }
 }
 
 void update_editable_field(State* state, Context ctx) {
@@ -770,7 +773,7 @@ void update_editable_field(State* state, Context ctx) {
                             (current_time - state->editable_field.click_time).count();
         state->editable_field.is_waiting_for_second_click = false;
 
-        if (time_elapsed >= 1.0) {
+        if (time_elapsed >= 0.5) {
             return;
         }
 
@@ -781,14 +784,27 @@ void update_editable_field(State* state, Context ctx) {
         }
 
         state->editable_field.is_open = true;
-        auto value = state->source->cell_text(i, j);
-        TextEdit::set_text_content(&state->editable_field.model, value.c_str());
+        state->editable_field.row = i;
+        state->editable_field.column = j;
+        state->editable_field.current_cell_text = state->source->cell_text(i, j);
+        TextEdit::set_text_content(&state->editable_field.model,
+                                   state->editable_field.current_cell_text.c_str());
         keyboard::focus(ctx, &state->editable_field.state);
     }
 
     // It's not open!
     if (!state->editable_field.is_open) {
         return;
+    }
+    
+    // If the cell text changes whilst editing, close the field
+    {
+        auto i = state->editable_field.row;
+        auto j = state->editable_field.column;
+        if (state->editable_field.current_cell_text != state->source->cell_text(i, j)) {
+            state->editable_field.is_open = false;
+            return;
+        }
     }
 
     if (keyboard::has_key_event(ctx, &state->editable_field.state)) {
@@ -798,7 +814,7 @@ void update_editable_field(State* state, Context ctx) {
         }
         if (ctx.key->action == keyboard::ACTION_RELEASE &&
             ctx.key->key == keyboard::KEY_ENTER) {
-            submit_editing(state);
+            stop_editing(state);
             keyboard::consume_key_event(ctx);
             return;
         }
@@ -810,6 +826,21 @@ void update_editable_field(State* state, Context ctx) {
                                         style::CELL_HEIGHT);
     PlainTextBox::update(&state->editable_field.state, child_ctx);
     nvgRestore(ctx.vg);
+    
+    // Select all on focus
+    if (keyboard::did_focus(ctx, &state->editable_field.state)) {
+        auto& model = state->editable_field.model;
+        model.selection = { 0 };
+        model.selection.b_index = model.lines.front().characters.size();
+        model.version_count++;
+        *ctx.must_repaint = true;
+    }
+    
+    // Close the box on blur
+    if (keyboard::did_blur(ctx, &state->editable_field.state)) {
+        stop_editing(state);
+        *ctx.must_repaint = true;
+    }
 
 }
 
@@ -820,10 +851,19 @@ std::string TableItemArrangerModel::label(int index) {
     return state->source->header_text(state->settings.column_ordering[index]);
 }
 bool TableItemArrangerModel::get_enabled(int index) {
-    return state->settings.column_enabled[state->settings.column_ordering[index]];
+    auto j = state->settings.column_ordering[index];
+    if (state->settings.grouped_column == j) {
+        return false;
+    }
+    return state->settings.column_enabled[j];
 }
 void TableItemArrangerModel::set_enabled(int index, bool enable) {
-    state->settings.column_enabled[state->settings.column_ordering[index]] = enable;
+    auto j = state->settings.column_ordering[index];
+    if (state->settings.grouped_column == j) {
+        state->settings.grouped_column = -1;
+        state->settings.group_collapsed.clear();
+    }
+    state->settings.column_enabled[j] = enable;
     refresh_results(state);
 }
 void TableItemArrangerModel::reorder(int old_index, int new_index) {
