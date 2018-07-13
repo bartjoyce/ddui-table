@@ -341,7 +341,8 @@ void update_column_header(State* state, Context ctx, int j, int& x, int y) {
         
         constexpr int MARGIN = 2;
         
-        auto content = state->source->header_text(j).c_str();
+        auto content_std = state->source->header_text(j);
+        auto content = content_std.c_str();
         auto width = settings.column_widths[j];
       
         auto length = strlen(content);
