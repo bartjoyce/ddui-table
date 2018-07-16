@@ -9,7 +9,7 @@
 #include "settings.hpp"
 #include <functional>
 #include <algorithm>
-#include <string.h>
+#include "alphacmp.hpp"
 
 namespace Table {
 
@@ -62,11 +62,11 @@ Results apply_settings(Model& model, Settings& settings) {
         std::function<bool(int,int)> compare;
         if (settings.sort_ascending) {
             compare = [&](int i1, int i2) {
-                return strcmp(model.cell_text(i1, j).c_str(), model.cell_text(i2, j).c_str()) < 0;
+                return alphacmp_ascending(model.cell_text(i1, j), model.cell_text(i2, j));
             };
         } else {
             compare = [&](int i1, int i2) {
-                return strcmp(model.cell_text(i1, j).c_str(), model.cell_text(i2, j).c_str()) > 0;
+                return alphacmp_descending(model.cell_text(i1, j), model.cell_text(i2, j));
             };
         }
         std::sort(results.row_indices.begin(), results.row_indices.end(), compare);
@@ -115,7 +115,7 @@ Results apply_settings_grouped(Model& model, Settings& settings) {
     // Step 2. Sort into groups
 
     auto j = settings.grouped_column;
-    std::map<std::string, std::vector<int>> groups;
+    std::map<std::string, std::vector<int>, alphacmp_operator> groups;
     for (int i = 0; i < num_rows; ++i) {
         if (!row_included[i]) {
             continue;
@@ -137,11 +137,11 @@ Results apply_settings_grouped(Model& model, Settings& settings) {
         std::function<bool(int,int)> compare;
         if (settings.sort_ascending) {
             compare = [&](int i1, int i2) {
-                return strcmp(model.cell_text(i1, j).c_str(), model.cell_text(i2, j).c_str()) < 0;
+                return alphacmp_ascending(model.cell_text(i1, j), model.cell_text(i2, j));
             };
         } else {
             compare = [&](int i1, int i2) {
-                return strcmp(model.cell_text(i1, j).c_str(), model.cell_text(i2, j).c_str()) > 0;
+                return alphacmp_descending(model.cell_text(i1, j), model.cell_text(i2, j));
             };
         }
 
