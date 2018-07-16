@@ -345,7 +345,7 @@ void update_column_header(State* state, Context ctx, int j, int& x, int y) {
         auto content = content_std.c_str();
         auto width = settings.column_widths[j];
       
-        auto length = strlen(content);
+        auto length = content_std.length();
         char new_content[length + 4];
         auto text_width = truncate_text(ctx.vg, width - 2 * MARGIN - icon_size, length, new_content, content);
       
