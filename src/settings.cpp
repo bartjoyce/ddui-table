@@ -7,7 +7,9 @@
 //
 
 #include "settings.hpp"
+#include <functional>
 #include <algorithm>
+#include <string.h>
 
 namespace Table {
 
