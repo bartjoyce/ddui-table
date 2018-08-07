@@ -89,6 +89,7 @@ void update(State* state, Context ctx) {
             *ctx.must_repaint = true;
         }
         if (toggle == 1) {
+            state->settings_changed = true;
             state->settings.grouped_column = -1;
             state->settings.group_collapsed.clear();
             refresh_results(state);
@@ -396,6 +397,7 @@ void update_column_separators(State* state, Context ctx) {
             settings.column_widths[column_resizing.active_column] = new_width;
         } else {
             column_resizing.active_column = -1;
+            state->settings_changed = true;
             state->content_width = calculate_table_width(state);
         }
     }
@@ -481,6 +483,7 @@ void update_group_headings(State* state, Context ctx) {
         }
         if (mouse_hit(ctx, button_x - 2, y, button_width + 2, style::CELL_HEIGHT)) {
             ctx.mouse->accepted = true;
+            state->settings_changed = true;
             settings.group_collapsed[heading.value] = !collapsed;
             refresh_results(state);
             *ctx.must_repaint = true;
@@ -557,6 +560,8 @@ void refresh_model(State* state) {
     if (headers_changed) {
         
         auto num_cols = model->columns();
+
+        state->settings_changed = true;
     
         settings.column_widths.clear();
         while (settings.column_widths.size() < num_cols) {
@@ -715,6 +720,12 @@ void refresh_results(State* state) {
     }
 }
 
+bool process_settings_change(State* state) {
+    auto settings_changed = state->settings_changed;
+    state->settings_changed = false;
+    return settings_changed;
+}
+
 void set_selection(State* state, int i, int j) {
     state->selection.row = state->selection.candidate_row;
     state->selection.column = state->selection.candidate_column;
@@ -859,6 +870,7 @@ bool TableItemArrangerModel::get_enabled(int index) {
     return state->settings.column_enabled[j];
 }
 void TableItemArrangerModel::set_enabled(int index, bool enable) {
+    state->settings_changed = true;
     auto j = state->settings.column_ordering[index];
     if (state->settings.grouped_column == j) {
         state->settings.grouped_column = -1;
@@ -868,6 +880,7 @@ void TableItemArrangerModel::set_enabled(int index, bool enable) {
     refresh_results(state);
 }
 void TableItemArrangerModel::reorder(int old_index, int new_index) {
+    state->settings_changed = true;
     auto& settings = state->settings;
     if (old_index < new_index - 1) {
         int tmp = settings.column_ordering[old_index];

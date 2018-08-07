@@ -169,6 +169,7 @@ void update_filter_buttons(State* state, Context ctx) {
     
     if (draw_filter_button(ctx, x1, y, button_width_1, button_height,
                            FORM_LEFT_MOST, ascending, "ASC")) {
+        state->settings_changed = true;
         settings.sort_column = ascending ? -1 : j;
         settings.sort_ascending = true;
         if (grouped) {
@@ -181,6 +182,7 @@ void update_filter_buttons(State* state, Context ctx) {
 
     if (draw_filter_button(ctx, x2, y, button_width_2, button_height,
                            FORM_MIDDLE, descending, "DESC")) {
+        state->settings_changed = true;
         settings.sort_column = descending ? -1 : j;
         settings.sort_ascending = false;
         if (grouped) {
@@ -193,6 +195,7 @@ void update_filter_buttons(State* state, Context ctx) {
 
     if (draw_filter_button(ctx, x3, y, button_width_3, button_height,
                            FORM_RIGHT_MOST, grouped, "GROUP")) {
+        state->settings_changed = true;
         settings.grouped_column = grouped ? -1 : j;
         settings.group_collapsed.clear();
         if (ascending || descending) {
@@ -222,6 +225,7 @@ void update_filter_values(State* state, Context ctx) {
             
             auto clicked = draw_filter_value(ctx, y, !filter.enabled, "Select all");
             if (clicked) {
+                state->settings_changed = true;
                 filter.enabled = !filter.enabled;
                 filter.allowed_values.clear();
                 refresh_results(state);

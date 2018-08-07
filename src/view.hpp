@@ -44,6 +44,7 @@ struct State {
     std::vector<std::map<std::string, bool>> column_values;
     Settings settings;
     Results results;
+    bool settings_changed;
 
     // Column resizing state
     struct {
@@ -90,6 +91,7 @@ struct State {
 };
 
 void update(State* state, Context ctx);
+bool process_settings_change(State* state);
 
 }
 
