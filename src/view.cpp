@@ -202,8 +202,6 @@ void update_table_content(State* state, Context ctx) {
 
     // Cells
     {
-        nvgFillColor(ctx.vg, style::COLOR_TEXT_ROW);
-        nvgFontFace(ctx.vg, "medium");
         nvgFontSize(ctx.vg, style::TEXT_SIZE_ROW);
     
         int sel_i = state->selection.row;
@@ -236,6 +234,10 @@ void update_table_content(State* state, Context ctx) {
                     state->selection.candidate_row = i;
                     state->selection.candidate_column = j;
                 }
+
+                nvgFillColor(ctx.vg, style::COLOR_TEXT_ROW);
+                nvgFontFace(ctx.vg, "medium");
+                model->apply_cell_style(i, j, x, y, settings.column_widths[j], style::CELL_HEIGHT, ctx.vg);
                 draw_centered_text_in_box(ctx.vg, x, y,
                                           settings.column_widths[j], style::CELL_HEIGHT,
                                           model->cell_text(i, j).c_str());
@@ -408,7 +410,9 @@ void update_column_separators(State* state, Context ctx) {
         for (int j : results.column_indices) {
             x += settings.column_widths[j];
             nvgBeginPath(ctx.vg);
-            nvgFillColor(ctx.vg, j == column_resizing.active_column ? style::COLOR_SEPARATOR_ACTIVE : style::COLOR_SEPARATOR);
+            nvgFillColor(ctx.vg, j == column_resizing.active_column
+                                 ? style::COLOR_SEPARATOR_ACTIVE
+                                 : style::COLOR_SEPARATOR);
             nvgRect(ctx.vg, x, separator_y, style::SEPARATOR_WIDTH, separator_height);
             nvgFill(ctx.vg);
             x += style::SEPARATOR_WIDTH;
@@ -492,7 +496,8 @@ void update_group_headings(State* state, Context ctx) {
         nvgFontFace(ctx.vg, "entypo");
         nvgFontSize(ctx.vg, BUTTON_SIZE);
         nvgText(ctx.vg, button_x, y + button_y,
-                collapsed ? entypo::BLACK_RIGHTPOINTING_SMALL_TRIANGLE : entypo::BLACK_DOWNPOINTING_SMALL_TRIANGLE, NULL);
+                collapsed ? entypo::BLACK_RIGHTPOINTING_SMALL_TRIANGLE
+                          : entypo::BLACK_DOWNPOINTING_SMALL_TRIANGLE, NULL);
         
         // Draw column title
         if (mouse_over(ctx, column_text_x, y, column_text_width, style::CELL_HEIGHT)) {
