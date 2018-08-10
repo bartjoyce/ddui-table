@@ -75,6 +75,7 @@ struct State {
         int row, column;
         int candidate_row, candidate_column;
         std::vector<std::string> row_key;
+        bool scroll_into_view;
     } selection;
 
     // Editable field

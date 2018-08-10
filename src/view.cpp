@@ -79,7 +79,71 @@ int calculate_table_width(State* state) {
 
 void update(State* state, Context ctx) {
   
+    keyboard::register_focus_group(ctx, state);
+
     refresh_model(state);
+
+    // Process key input
+    if (keyboard::has_key_event(ctx, state) &&
+        state->selection.row != -1 &&
+        ctx.key->action == keyboard::ACTION_PRESS) {
+        
+        auto& selection = state->selection;
+        bool super = ctx.key->mods & keyboard::MOD_SUPER;
+
+        // Find the placement of the selection in the view
+        auto max_row = state->results.row_indices.size() - 1;
+        auto row_index = 0;
+        for (; row_index <= max_row; ++row_index) {
+            if (selection.row == state->results.row_indices[row_index]) {
+                break;
+            }
+        }
+
+        auto max_col = state->results.column_indices.size() - 1;
+        auto col_index = 0;
+        for (; col_index <= max_col; ++col_index) {
+            if (selection.column == state->results.column_indices[col_index]) {
+                break;
+            }
+        }
+        
+        // Update the index
+        bool changed = true;
+        switch (ctx.key->key) {
+            case keyboard::KEY_UP: {
+                if (super) row_index = 0;
+                if (row_index > 0) --row_index;
+                break;
+            }
+            case keyboard::KEY_DOWN: {
+                if (super) row_index = max_row;
+                if (row_index < max_row) ++row_index;
+                break;
+            }
+            case keyboard::KEY_LEFT: {
+                if (super) col_index = 0;
+                if (col_index > 0) --col_index;
+                break;
+            }
+            case keyboard::KEY_RIGHT: {
+                if (super) col_index = max_col;
+                if (col_index < max_col) ++col_index;
+                break;
+            }
+            default:
+                changed = false;
+                break;
+        }
+        
+        // Translate back to model selection
+        if (changed) {
+            keyboard::consume_key_event(ctx);
+            set_selection(state,
+                          state->results.row_indices[row_index],
+                          state->results.column_indices[col_index]);
+        }
+    }
   
     // Process context menu
     {
@@ -138,15 +202,32 @@ void update(State* state, Context ctx) {
     });
     nvgRestore(ctx.vg);
 
+    // Handle focusing on click
+    if (keyboard::did_blur(ctx, state) &&
+        !keyboard::has_focus(ctx, &state->editable_field.state) &&
+        state->selection.row != -1) {
+        clear_selection(state);
+        refresh_results(state);
+        *ctx.must_repaint = true;
+    }
+
     // Handle selection change
     if (state->selection.candidate_row != -1 && !ctx.mouse->accepted) {
+        if (!keyboard::has_focus(ctx, state)) {
+            keyboard::focus(ctx, state);
+        }
         ctx.mouse->accepted = true;
         set_selection(state, state->selection.candidate_row,
                              state->selection.candidate_column);
+        state->editable_field.is_waiting_for_second_click = true;
+        state->editable_field.click_time = std::chrono::high_resolution_clock::now();
         refresh_results(state);
         *ctx.must_repaint = true;
     }
     if (state->selection.row != -1 && mouse_hit(ctx, 0, 0, ctx.width, ctx.height)) {
+        if (!keyboard::has_focus(ctx, state)) {
+            keyboard::focus(ctx, state);
+        }
         ctx.mouse->accepted = true;
         clear_selection(state);
         refresh_results(state);
@@ -229,6 +310,15 @@ void update_table_content(State* state, Context ctx) {
                     state->editable_field.cell_x = x;
                     state->editable_field.cell_y = y;
                     state->editable_field.cell_width = settings.column_widths[j];
+
+                    if (state->selection.scroll_into_view) {
+                        state->selection.scroll_into_view = false;
+                        ScrollArea::scroll_into_view(
+                            &state->scroll_area_state, ctx,
+                            x, y - style::CELL_HEIGHT,
+                            settings.column_widths[j], 2 * style::CELL_HEIGHT
+                        );
+                    }
                 }
                 if (mouse_hit(ctx, x, y, settings.column_widths[j], style::CELL_HEIGHT)) {
                     state->selection.candidate_row = i;
@@ -732,9 +822,10 @@ bool process_settings_change(State* state) {
 }
 
 void set_selection(State* state, int i, int j) {
-    state->selection.row = state->selection.candidate_row;
-    state->selection.column = state->selection.candidate_column;
+    state->selection.row = i;
+    state->selection.column = j;
     state->selection.row_key.clear();
+    state->selection.scroll_into_view = true;
 
     auto key = state->source->key();
     if (!key.empty()) {
@@ -745,9 +836,6 @@ void set_selection(State* state, int i, int j) {
     }
 
     stop_editing(state);
-
-    state->editable_field.is_waiting_for_second_click = true;
-    state->editable_field.click_time = std::chrono::high_resolution_clock::now();
 }
 
 void clear_selection(State* state) {
@@ -781,19 +869,39 @@ void stop_editing(State* state) {
 
 void update_editable_field(State* state, Context ctx) {
     // Dealing with the double-click
+    bool should_open = false;
     if (state->editable_field.is_waiting_for_second_click &&
         mouse_hit(ctx, state->editable_field.cell_x, state->editable_field.cell_y,
                   state->editable_field.cell_width, style::CELL_HEIGHT)) {
+
+        ctx.mouse->accepted = true;
 
         auto current_time = std::chrono::high_resolution_clock::now();
         auto time_elapsed = std::chrono::duration_cast<std::chrono::duration<double>>
                             (current_time - state->editable_field.click_time).count();
         state->editable_field.is_waiting_for_second_click = false;
 
-        if (time_elapsed >= 0.5) {
-            return;
+        if (time_elapsed < 0.5) {
+            should_open = true;
         }
+    }
 
+    // Dealing with keyboard
+    if (state->selection.row != -1 && keyboard::has_key_event(ctx, state)) {
+        if (ctx.key->action == keyboard::ACTION_PRESS &&
+            ctx.key->key == keyboard::KEY_ENTER) {
+            keyboard::consume_key_event(ctx);
+        }
+        if (ctx.key->action == keyboard::ACTION_RELEASE &&
+            ctx.key->key == keyboard::KEY_ENTER) {
+            stop_editing(state);
+            keyboard::consume_key_event(ctx);
+            should_open = true;
+        }
+    }
+
+    // Open the editable field if either a double-click happened OR enter key pressed
+    if (should_open) {
         auto i = state->selection.row;
         auto j = state->selection.column;
         if (!state->source->cell_editable(i, j)) {
@@ -833,6 +941,7 @@ void update_editable_field(State* state, Context ctx) {
             ctx.key->key == keyboard::KEY_ENTER) {
             stop_editing(state);
             keyboard::consume_key_event(ctx);
+            keyboard::focus(ctx, state);
             return;
         }
     }
