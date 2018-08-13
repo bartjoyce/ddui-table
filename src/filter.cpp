@@ -130,6 +130,7 @@ bool draw_filter_button(Context ctx, int x, int y, int width, int height, Button
     // Draw button text
     nvgFillColor(ctx.vg, COLOR_TEXT_BUTTON);
     nvgFontFace(ctx.vg, "regular");
+    nvgFontSize(ctx.vg, 18.0);
     nvgTextAlign(ctx.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
     nvgText(ctx.vg, x + width / 2, y + height / 2, label, NULL);
     nvgTextAlign(ctx.vg, NVG_ALIGN_LEFT);
@@ -350,6 +351,7 @@ bool draw_filter_value(Context ctx, int y, bool active, const char* label) {
         nvgFillColor(ctx.vg, style::COLOR_TEXT_ROW);
         nvgFontFace(ctx.vg, "regular");
     }
+    nvgFontSize(ctx.vg, 16.0);
     int x = VALUE_MARGIN + VALUE_SQUARE_SIZE + 2 * VALUE_SQUARE_MARGIN;
     draw_text_in_box(ctx.vg, x, y, ctx.width - x - VALUE_MARGIN, VALUE_HEIGHT, label);
     

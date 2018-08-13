@@ -112,13 +112,31 @@ void update(State* state, Context ctx) {
         bool changed = true;
         switch (ctx.key->key) {
             case keyboard::KEY_UP: {
-                if (super) row_index = 0;
-                if (row_index > 0) --row_index;
+                auto new_row_index = row_index;
+                if (super) new_row_index = 0;
+                while (new_row_index > 0) {
+                    --new_row_index;
+                    if (state->results.row_indices[new_row_index] != -1) {
+                        break;
+                    }
+                }
+                if (state->results.row_indices[new_row_index] != -1) {
+                    row_index = new_row_index;
+                }
                 break;
             }
             case keyboard::KEY_DOWN: {
-                if (super) row_index = max_row;
-                if (row_index < max_row) ++row_index;
+                auto new_row_index = row_index;
+                if (super) new_row_index = max_row;
+                while (new_row_index < max_row) {
+                    ++new_row_index;
+                    if (state->results.row_indices[new_row_index] != -1) {
+                        break;
+                    }
+                }
+                if (state->results.row_indices[new_row_index] != -1) {
+                    row_index = new_row_index;
+                }
                 break;
             }
             case keyboard::KEY_LEFT: {
