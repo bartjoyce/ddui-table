@@ -11,53 +11,55 @@
 
 #include <nanovg.h>
 
+namespace Table {
 namespace style {
 
-static NVGcolor COLOR_BG_ROW_EVEN              = nvgRGB(0x42, 0x42, 0x42); // #424242
-static NVGcolor COLOR_BG_ROW_ODD               = nvgRGB(0x4f, 0x4f, 0x4f); // #4f4f4f
-static NVGcolor COLOR_BG_CELL_ACTIVE           = nvgRGB(0x2a, 0x9f, 0xd6); // #2a9fd6
-static NVGcolor COLOR_BG_HEADER                = nvgRGB(0x22, 0x22, 0x22); // #222222
-static NVGcolor COLOR_BG_GROUP_HEADING         = nvgRGB(0x77, 0x77, 0x77); // #777777
-static NVGcolor COLOR_TEXT_ROW                 = nvgRGB(0xff, 0xff, 0xff); // #ffffff
-static NVGcolor COLOR_TEXT_HEADER              = nvgRGB(0x4c, 0xcf, 0xff); // #4ccfff
-static NVGcolor COLOR_TEXT_GROUP_HEADING       = nvgRGB(0xdd, 0xdd, 0xdd); // #dddddd
-static NVGcolor COLOR_TEXT_GROUP_HEADING_HOVER = nvgRGB(0xff, 0xff, 0xff); // #ffffff
-static NVGcolor COLOR_SEPARATOR                = nvgRGBA(0xbb, 0xbb, 0xbb, 0x20); // #bbbbbb
-static NVGcolor COLOR_SEPARATOR_ACTIVE         = nvgRGB(0x2a, 0x9f, 0xd6); // #2a9fd6
-constexpr int CELL_WIDTH_INITIAL = 100;
-constexpr int CELL_HEIGHT = 24;
-constexpr int SEPARATOR_WIDTH = 1;
-constexpr int TEXT_SIZE_ROW = 14;
-constexpr int TEXT_SIZE_HEADER = 14;
-constexpr int TEXT_SIZE_GROUP_HEADING = 14;
-constexpr int GROUP_HEADING_MARGIN = 10;
+extern NVGcolor COLOR_BG_ROW_EVEN;
+extern NVGcolor COLOR_BG_ROW_ODD;
+extern NVGcolor COLOR_BG_CELL_ACTIVE;
+extern NVGcolor COLOR_BG_HEADER;
+extern NVGcolor COLOR_BG_GROUP_HEADING;
+extern NVGcolor COLOR_TEXT_ROW;
+extern NVGcolor COLOR_TEXT_HEADER;
+extern NVGcolor COLOR_TEXT_GROUP_HEADING;
+extern NVGcolor COLOR_TEXT_GROUP_HEADING_HOVER;
+extern NVGcolor COLOR_SEPARATOR;
+extern NVGcolor COLOR_SEPARATOR_ACTIVE;
+extern int CELL_WIDTH_INITIAL;
+extern int CELL_HEIGHT;
+extern int SEPARATOR_WIDTH;
+extern int TEXT_SIZE_ROW;
+extern int TEXT_SIZE_HEADER;
+extern int TEXT_SIZE_GROUP_HEADING;
+extern int GROUP_HEADING_MARGIN;
 
 // Filter overlay
 namespace filter_overlay {
 
-    static NVGcolor COLOR_OUTLINE          = COLOR_SEPARATOR;
-    static NVGcolor COLOR_BG_BOX           = COLOR_BG_HEADER;
-    static NVGcolor COLOR_BG_BUTTON        = COLOR_BG_ROW_EVEN;
-    static NVGcolor COLOR_BG_BUTTON_ACTIVE = COLOR_SEPARATOR_ACTIVE;
-    static NVGcolor COLOR_TEXT_BUTTON      = COLOR_TEXT_ROW;
-    static NVGcolor COLOR_VALUE_SEPARATOR  = COLOR_BG_ROW_ODD;
-    constexpr int ARROW_HEIGHT = 10;
-    constexpr int ARROW_WIDTH = 6;
-    constexpr int BOX_WIDTH = 200;
-    constexpr int BOX_HEIGHT = 200;
-    constexpr int BOX_BORDER_RADIUS = 4;
-    constexpr int BUTTONS_AREA_HEIGHT = 40;
-    constexpr int BUTTONS_AREA_MARGIN = 6;
-    constexpr int BUTTON_BORDER_RADIUS = 4;
-    constexpr int BUTTON_SPACING = 1;
-    constexpr int VALUE_HEIGHT = 30;
-    constexpr int VALUE_MARGIN = 5;
-    constexpr int VALUE_SQUARE_SIZE = 10;
-    constexpr int VALUE_SQUARE_MARGIN = 10;
-    constexpr int VALUE_SQUARE_BORDER_RADIUS = 2;
+    extern NVGcolor COLOR_OUTLINE;
+    extern NVGcolor COLOR_BG_BOX;
+    extern NVGcolor COLOR_BG_BUTTON;
+    extern NVGcolor COLOR_BG_BUTTON_ACTIVE;
+    extern NVGcolor COLOR_TEXT_BUTTON;
+    extern NVGcolor COLOR_VALUE_SEPARATOR;
+    extern int ARROW_HEIGHT;
+    extern int ARROW_WIDTH;
+    extern int BOX_WIDTH;
+    extern int BOX_HEIGHT;
+    extern int BOX_BORDER_RADIUS;
+    extern int BUTTONS_AREA_HEIGHT;
+    extern int BUTTONS_AREA_MARGIN;
+    extern int BUTTON_BORDER_RADIUS;
+    extern int BUTTON_SPACING;
+    extern int VALUE_HEIGHT;
+    extern int VALUE_MARGIN;
+    extern int VALUE_SQUARE_SIZE;
+    extern int VALUE_SQUARE_MARGIN;
+    extern int VALUE_SQUARE_BORDER_RADIUS;
 
 }
 
+}
 }
 
 #endif
