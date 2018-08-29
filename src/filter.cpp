@@ -13,51 +13,53 @@
 
 namespace Table {
 
-void refresh_results(State* state);
-static void update_filter_buttons(State* state, Context ctx);
-static void update_filter_values(State* state, Context ctx);
-static void draw_filter_overlay_path(Context ctx, int x, int y);
-static bool draw_filter_value(Context ctx, int y, bool active, const char* label);
-static void get_box_position(Context ctx, int center_x, int center_y, int* box_x, int* box_y);
+using namespace ddui;
 
-void update_filter_overlay(State* state, Context ctx) {
+void refresh_results(State* state);
+static void update_filter_buttons(State* state);
+static void update_filter_values(State* state);
+static void draw_filter_overlay_path(float x, float y);
+static bool draw_filter_value(float y, bool active, const char* label);
+static void get_box_position(float center_x, float center_y, float* box_x, float* box_y);
+
+void update_filter_overlay(State* state) {
     using namespace style::filter_overlay;
 
     auto center_x = state->filter_overlay.x;
     auto center_y = state->filter_overlay.y;
     
-    int box_x, box_y;
-    get_box_position(ctx, center_x, center_y, &box_x, &box_y);
+    float box_x, box_y;
+    get_box_position(center_x, center_y, &box_x, &box_y);
 
     // Fill in box background
-    draw_filter_overlay_path(ctx, center_x, center_y);
-    nvgFillColor(ctx.vg, COLOR_BG_BOX);
-    nvgFill(ctx.vg);
+    draw_filter_overlay_path(center_x, center_y);
+    fill_color(COLOR_BG_BOX);
+    fill();
 
     // Draw buttons
     {
-        auto child_ctx = child_context(ctx, box_x, box_y, BOX_WIDTH, BUTTONS_AREA_HEIGHT);
-        update_filter_buttons(state, child_ctx);
-        nvgRestore(ctx.vg);
+        sub_view(box_x, box_y, BOX_WIDTH, BUTTONS_AREA_HEIGHT);
+        update_filter_buttons(state);
+        restore();
     }
 
     // Draw values
     {
-        auto child_ctx = child_context(ctx, box_x, box_y + BUTTONS_AREA_HEIGHT, BOX_WIDTH,
-                                       BOX_HEIGHT - BUTTONS_AREA_HEIGHT - BOX_BORDER_RADIUS);
-        update_filter_values(state, child_ctx);
-        nvgRestore(ctx.vg);
+        sub_view(box_x, box_y + BUTTONS_AREA_HEIGHT, BOX_WIDTH,
+                 BOX_HEIGHT - BUTTONS_AREA_HEIGHT - BOX_BORDER_RADIUS);
+        update_filter_values(state);
+        restore();
     }
 
     // Draw box outline
-    draw_filter_overlay_path(ctx, center_x, center_y);
-    nvgStrokeColor(ctx.vg, COLOR_OUTLINE);
-    nvgStrokeWidth(ctx.vg, 1.0);
-    nvgStroke(ctx.vg);
+    draw_filter_overlay_path(center_x, center_y);
+    stroke_color(COLOR_OUTLINE);
+    stroke_width(1.0);
+    stroke();
     
     // Catch clicks in the box
-    if (mouse_hit(ctx, center_x - BOX_WIDTH / 2, center_y + ARROW_HEIGHT, BOX_WIDTH, BOX_HEIGHT)) {
-        ctx.mouse->accepted = true;
+    if (mouse_hit(center_x - BOX_WIDTH / 2, center_y + ARROW_HEIGHT, BOX_WIDTH, BOX_HEIGHT)) {
+        mouse_hit_accept();
     }
 }
 
@@ -108,56 +110,56 @@ enum ButtonForm {
     FORM_RIGHT_MOST
 };
 
-bool draw_filter_button(Context ctx, int x, int y, int width, int height, ButtonForm form, bool active, const char* label) {
+static bool draw_filter_button(float x, float y, float width, float height, ButtonForm form, bool active, const char* label) {
     using namespace style::filter_overlay;
 
     // Fill button background
     if (active) {
-        nvgFillColor(ctx.vg, COLOR_BG_BUTTON_ACTIVE);
+        fill_color(COLOR_BG_BUTTON_ACTIVE);
     } else {
-        nvgFillColor(ctx.vg, COLOR_BG_BUTTON);
+        fill_color(COLOR_BG_BUTTON);
     }
-    nvgBeginPath(ctx.vg);
+    begin_path();
     if (form == FORM_LEFT_MOST) {
-        nvgRoundedRectVarying(ctx.vg, x, y, width, height, BUTTON_BORDER_RADIUS, 0, 0, BUTTON_BORDER_RADIUS);
+        rounded_rect_varying(x, y, width, height, BUTTON_BORDER_RADIUS, 0, 0, BUTTON_BORDER_RADIUS);
     } else if (form == FORM_RIGHT_MOST) {
-        nvgRoundedRectVarying(ctx.vg, x, y, width, height, 0, BUTTON_BORDER_RADIUS, BUTTON_BORDER_RADIUS, 0);
+        rounded_rect_varying(x, y, width, height, 0, BUTTON_BORDER_RADIUS, BUTTON_BORDER_RADIUS, 0);
     } else {
-        nvgRect(ctx.vg, x, y, width, height);
+        rect(x, y, width, height);
     }
-    nvgFill(ctx.vg);
+    fill();
 
     // Draw button text
-    nvgFillColor(ctx.vg, COLOR_TEXT_BUTTON);
-    nvgFontFace(ctx.vg, "regular");
-    nvgFontSize(ctx.vg, 18.0);
-    nvgTextAlign(ctx.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
-    nvgText(ctx.vg, x + width / 2, y + height / 2, label, NULL);
-    nvgTextAlign(ctx.vg, NVG_ALIGN_LEFT);
+    fill_color(COLOR_TEXT_BUTTON);
+    font_face("regular");
+    font_size(18.0);
+    text_align(NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+    text(x + width / 2, y + height / 2, label, NULL);
+    text_align(NVG_ALIGN_LEFT);
 
     // Handle mouse hover
-    if (mouse_over(ctx, x, y, width, height)) {
-        *ctx.cursor = CURSOR_POINTING_HAND;
+    if (mouse_over(x, y, width, height)) {
+        set_cursor(CURSOR_POINTING_HAND);
     }
 
     // Handle mouse click
-    if (mouse_hit(ctx, x, y, width, height)) {
-        ctx.mouse->accepted = true;
+    if (mouse_hit(x, y, width, height)) {
+        mouse_hit_accept();
         return true;
     }
     return false;
 }
 
-void update_filter_buttons(State* state, Context ctx) {
+void update_filter_buttons(State* state) {
     using namespace style::filter_overlay;
     
     auto& settings = state->settings;
     auto j = state->filter_overlay.active_column;
     
-    auto button_height = ctx.height - 2 * BUTTONS_AREA_MARGIN;
-    auto button_width_1 = (ctx.width - 2 * BUTTONS_AREA_MARGIN) / 3;
+    auto button_height = view.height - 2 * BUTTONS_AREA_MARGIN;
+    auto button_width_1 = (view.width - 2 * BUTTONS_AREA_MARGIN) / 3;
     auto button_width_3 = button_width_1;
-    auto button_width_2 = ctx.width - 2 * BUTTONS_AREA_MARGIN - button_width_1 - button_width_3 - 2 * BUTTON_SPACING;
+    auto button_width_2 = view.width - 2 * BUTTONS_AREA_MARGIN - button_width_1 - button_width_3 - 2 * BUTTON_SPACING;
     
     auto y = BUTTONS_AREA_MARGIN;
     auto x1 = BUTTONS_AREA_MARGIN;
@@ -168,7 +170,7 @@ void update_filter_buttons(State* state, Context ctx) {
     auto descending = (settings.sort_column == j && !settings.sort_ascending);
     auto grouped = (settings.grouped_column == j);
     
-    if (draw_filter_button(ctx, x1, y, button_width_1, button_height,
+    if (draw_filter_button(x1, y, button_width_1, button_height,
                            FORM_LEFT_MOST, ascending, "ASC")) {
         state->settings_changed = true;
         settings.sort_column = ascending ? -1 : j;
@@ -181,7 +183,7 @@ void update_filter_buttons(State* state, Context ctx) {
         refresh_results(state);
     }
 
-    if (draw_filter_button(ctx, x2, y, button_width_2, button_height,
+    if (draw_filter_button(x2, y, button_width_2, button_height,
                            FORM_MIDDLE, descending, "DESC")) {
         state->settings_changed = true;
         settings.sort_column = descending ? -1 : j;
@@ -194,7 +196,7 @@ void update_filter_buttons(State* state, Context ctx) {
         refresh_results(state);
     }
 
-    if (draw_filter_button(ctx, x3, y, button_width_3, button_height,
+    if (draw_filter_button(x3, y, button_width_3, button_height,
                            FORM_RIGHT_MOST, grouped, "GROUP")) {
         state->settings_changed = true;
         settings.grouped_column = grouped ? -1 : j;
@@ -208,12 +210,12 @@ void update_filter_buttons(State* state, Context ctx) {
     
 }
 
-void update_filter_values(State* state, Context ctx) {
+void update_filter_values(State* state) {
     using namespace style::filter_overlay;
     
     auto inner_height = VALUE_HEIGHT * (1 + state->filter_overlay.value_list.size());
 
-    ScrollArea::update(&state->filter_overlay.scroll_area_state, ctx, ctx.width, inner_height, [&](Context ctx) {
+    ScrollArea::update(&state->filter_overlay.scroll_area_state, view.width, inner_height, [&]() {
     
         auto j = state->filter_overlay.active_column;
         auto& value_list = state->filter_overlay.value_list;
@@ -224,13 +226,13 @@ void update_filter_values(State* state, Context ctx) {
         // "Select all" option
         {
             
-            auto clicked = draw_filter_value(ctx, y, !filter.enabled, "Select all");
+            auto clicked = draw_filter_value(y, !filter.enabled, "Select all");
             if (clicked) {
                 state->settings_changed = true;
                 filter.enabled = !filter.enabled;
                 filter.allowed_values.clear();
                 refresh_results(state);
-                *ctx.must_repaint = true;
+                repaint();
             }
             
             y += VALUE_HEIGHT;
@@ -238,12 +240,12 @@ void update_filter_values(State* state, Context ctx) {
         
         // Draw divider
         {
-            nvgBeginPath(ctx.vg);
-            nvgMoveTo(ctx.vg, VALUE_MARGIN, y);
-            nvgLineTo(ctx.vg, ctx.width - VALUE_MARGIN, y);
-            nvgStrokeColor(ctx.vg, COLOR_VALUE_SEPARATOR);
-            nvgStrokeWidth(ctx.vg, 1.0);
-            nvgStroke(ctx.vg);
+            begin_path();
+            move_to(VALUE_MARGIN, y);
+            line_to(view.width - VALUE_MARGIN, y);
+            stroke_color(COLOR_VALUE_SEPARATOR);
+            stroke_width(1.0);
+            stroke();
         }
         
         // All value options
@@ -253,7 +255,7 @@ void update_filter_values(State* state, Context ctx) {
         for (auto& value : value_list) {
             auto active = !filter.enabled || filter.allowed_values.find(value) != filter.allowed_values.end();
             
-            auto clicked = draw_filter_value(ctx, y, active, value.c_str());
+            auto clicked = draw_filter_value(y, active, value.c_str());
             if (clicked) {
                 value_was_clicked = true;
                 clicked_value = value;
@@ -297,84 +299,84 @@ void update_filter_values(State* state, Context ctx) {
             }
             
             refresh_results(state);
-            *ctx.must_repaint = true;
+            repaint();
         }
         
     });
 }
 
-void draw_filter_overlay_path(Context ctx, int x, int y) {
+void draw_filter_overlay_path(float x, float y) {
     using namespace style::filter_overlay;
 
-    int bx, by;
-    get_box_position(ctx, x, y, &bx, &by);
+    float bx, by;
+    get_box_position(x, y, &bx, &by);
 
     auto w = BOX_WIDTH;
     auto h = BOX_HEIGHT;
     auto r = BOX_BORDER_RADIUS;
     
-    nvgBeginPath(ctx.vg);
-    nvgMoveTo(ctx.vg, x - ARROW_WIDTH, by);
-    nvgLineTo(ctx.vg, x, y);
-    nvgLineTo(ctx.vg, x + ARROW_WIDTH, by);
-    nvgLineTo(ctx.vg, bx + w - r, by);
-    nvgArcTo (ctx.vg, bx + w, by, bx + w, by + r, r);
-    nvgLineTo(ctx.vg, bx + w, by + h - r);
-    nvgArcTo (ctx.vg, bx + w, by + h, bx + w - r, by + h, r);
-    nvgLineTo(ctx.vg, bx + r, by + h);
-    nvgArcTo (ctx.vg, bx, by + h, bx, by + h - r, r);
-    nvgLineTo(ctx.vg, bx, by + r);
-    nvgArcTo (ctx.vg, bx, by, bx + r, by, r);
-    nvgClosePath(ctx.vg);
+    begin_path();
+    move_to(x - ARROW_WIDTH, by);
+    line_to(x, y);
+    line_to(x + ARROW_WIDTH, by);
+    line_to(bx + w - r, by);
+    arc_to (bx + w, by, bx + w, by + r, r);
+    line_to(bx + w, by + h - r);
+    arc_to (bx + w, by + h, bx + w - r, by + h, r);
+    line_to(bx + r, by + h);
+    arc_to (bx, by + h, bx, by + h - r, r);
+    line_to(bx, by + r);
+    arc_to (bx, by, bx + r, by, r);
+    close_path();
 }
 
-bool draw_filter_value(Context ctx, int y, bool active, const char* label) {
+bool draw_filter_value(float y, bool active, const char* label) {
     using namespace style::filter_overlay;
     
-    nvgBeginPath(ctx.vg);
-    nvgRoundedRect(ctx.vg, VALUE_MARGIN + VALUE_SQUARE_MARGIN,
-                   y + (VALUE_HEIGHT - VALUE_SQUARE_SIZE) / 2, VALUE_SQUARE_SIZE,
-                   VALUE_SQUARE_SIZE, VALUE_SQUARE_BORDER_RADIUS);
+    begin_path();
+    rounded_rect(VALUE_MARGIN + VALUE_SQUARE_MARGIN,
+                 y + (VALUE_HEIGHT - VALUE_SQUARE_SIZE) / 2, VALUE_SQUARE_SIZE,
+                 VALUE_SQUARE_SIZE, VALUE_SQUARE_BORDER_RADIUS);
     if (active) {
-        nvgFillColor(ctx.vg, style::COLOR_TEXT_HEADER);
-        nvgFill(ctx.vg);
+        fill_color(style::COLOR_TEXT_HEADER);
+        fill();
     } else {
-        nvgStrokeColor(ctx.vg, style::COLOR_TEXT_ROW);
-        nvgStrokeWidth(ctx.vg, 1.0);
-        nvgStroke(ctx.vg);
+        stroke_color(style::COLOR_TEXT_ROW);
+        stroke_width(1.0);
+        stroke();
     }
 
     if (active) {
-        nvgFillColor(ctx.vg, style::COLOR_TEXT_HEADER);
-        nvgFontFace(ctx.vg, "bold");
+        fill_color(style::COLOR_TEXT_HEADER);
+        font_face("bold");
     } else {
-        nvgFillColor(ctx.vg, style::COLOR_TEXT_ROW);
-        nvgFontFace(ctx.vg, "regular");
+        fill_color(style::COLOR_TEXT_ROW);
+        font_face("regular");
     }
-    nvgFontSize(ctx.vg, 16.0);
-    int x = VALUE_MARGIN + VALUE_SQUARE_SIZE + 2 * VALUE_SQUARE_MARGIN;
-    draw_text_in_box(ctx.vg, x, y, ctx.width - x - VALUE_MARGIN, VALUE_HEIGHT, label);
+    font_size(16.0);
+    auto x = VALUE_MARGIN + VALUE_SQUARE_SIZE + 2 * VALUE_SQUARE_MARGIN;
+    draw_text_in_box(x, y, view.width - x - VALUE_MARGIN, VALUE_HEIGHT, label);
     
-    if (mouse_over(ctx, VALUE_MARGIN, y, ctx.width - 2 * VALUE_MARGIN, VALUE_HEIGHT)) {
-        *ctx.cursor = CURSOR_POINTING_HAND;
+    if (mouse_over(VALUE_MARGIN, y, view.width - 2 * VALUE_MARGIN, VALUE_HEIGHT)) {
+        set_cursor(CURSOR_POINTING_HAND);
     }
     
-    if (mouse_hit(ctx, VALUE_MARGIN, y, ctx.width - 2 * VALUE_MARGIN, VALUE_HEIGHT)) {
-        ctx.mouse->accepted = true;
+    if (mouse_hit(VALUE_MARGIN, y, view.width - 2 * VALUE_MARGIN, VALUE_HEIGHT)) {
+        mouse_hit_accept();
         return true;
     }
     
     return false;
 }
 
-void get_box_position(Context ctx, int center_x, int center_y, int* box_x, int* box_y) {
+void get_box_position(float center_x, float center_y, float* box_x, float* box_y) {
     using namespace style::filter_overlay;
     
     *box_x = center_x - BOX_WIDTH / 2;
     *box_y = center_y + ARROW_HEIGHT;
     
-    if (*box_x > ctx.width - BOX_WIDTH - 5) {
-        *box_x = ctx.width - BOX_WIDTH - 5;
+    if (*box_x > view.width - BOX_WIDTH - 5) {
+        *box_x = view.width - BOX_WIDTH - 5;
     }
     if (*box_x < 5) {
         *box_x = 5;

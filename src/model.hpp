@@ -27,7 +27,7 @@ class Model {
         virtual std::vector<int> key() = 0;
         virtual bool cell_editable(int row, int col) = 0;
         virtual void set_cell_text(int row, int col, std::string text) = 0;
-        virtual void apply_cell_style(int row, int col, int x, int y, int w, int h, NVGcontext* vg) = 0;
+        virtual void apply_cell_style(int row, int col, float x, float y, float w, float h) = 0;
 };
 
 class BasicModel : public Model {
@@ -64,7 +64,7 @@ class BasicModel : public Model {
             data[row][col] = text;
             ++version_count;
         }
-        void apply_cell_style(int row, int col, int x, int y, int w, int h, NVGcontext* vg) {
+        void apply_cell_style(int row, int col, float x, float y, float w, float h) {
             return;
         }
 

@@ -20,7 +20,7 @@ struct ColumnFilter {
 };
 
 struct Settings {
-    std::vector<int> column_widths;
+    std::vector<float> column_widths;
     std::vector<bool> column_enabled;
     std::vector<int> column_ordering;
 

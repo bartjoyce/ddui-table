@@ -9,7 +9,7 @@
 #ifndef ddui_table_view_hpp
 #define ddui_table_view_hpp
 
-#include <ddui/Context>
+#include <ddui/core>
 #include <ddui/views/ScrollArea>
 #include <ddui/views/ItemArranger>
 #include <ddui/views/PlainTextBox>
@@ -49,12 +49,12 @@ struct State {
     // Column resizing state
     struct {
         int active_column;
-        int initial_width;
+        float initial_width;
     } column_resizing;
 
     // UI info
-    int content_width;
-    int content_height;
+    float content_width;
+    float content_height;
     ScrollArea::ScrollAreaState scroll_area_state;
   
     // Column manager
@@ -65,7 +65,7 @@ struct State {
     // Filter overlay
     struct {
         int active_column;
-        int x, y;
+        float x, y;
         std::vector<std::string> value_list;
         ScrollArea::ScrollAreaState scroll_area_state;
     } filter_overlay;
@@ -86,12 +86,12 @@ struct State {
         TextEdit::Model model;
         PlainTextBox::PlainTextBoxState state;
         int row, column;
-        int cell_x, cell_y, cell_width;
+        float cell_x, cell_y, cell_width;
         std::string current_cell_text;
     } editable_field;
 };
 
-void update(State* state, Context ctx);
+void update(State* state);
 bool process_settings_change(State* state);
 
 }

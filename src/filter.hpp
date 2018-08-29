@@ -13,7 +13,7 @@
 
 namespace Table {
 
-void update_filter_overlay(State* state, Context ctx);
+void update_filter_overlay(State* state);
 std::vector<std::string> prepare_filter_value_list(State* state, int column);
 
 }
