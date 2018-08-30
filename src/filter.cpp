@@ -25,8 +25,8 @@ static void get_box_position(float center_x, float center_y, float* box_x, float
 void update_filter_overlay(State* state) {
     using namespace style::filter_overlay;
 
-    auto center_x = state->filter_overlay.x;
-    auto center_y = state->filter_overlay.y;
+    float center_x, center_y;
+    from_global_position(&center_x, &center_y, state->filter_overlay.x, state->filter_overlay.y);
     
     float box_x, box_y;
     get_box_position(center_x, center_y, &box_x, &box_y);
