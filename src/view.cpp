@@ -428,7 +428,7 @@ void update_column_header(State* state, int j, float& x, float y) {
                                style::CELL_HEIGHT - 2 * MARGIN);
             state->filter_overlay.value_list = prepare_filter_value_list(state, j);
             state->filter_overlay.scroll_area_state = ScrollArea::ScrollAreaState();
-            Overlay::open((void*)state);
+            Overlay::open(state);
         }
         
         if (state->filter_overlay.active_column == j) {
@@ -819,7 +819,7 @@ void refresh_results(State* state) {
                 break;
             }
         }
-        
+
         bool found_col = false;
         for (int j : state->results.column_indices) {
             if (state->selection.column == j) {

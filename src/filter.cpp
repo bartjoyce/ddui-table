@@ -178,7 +178,7 @@ void update_filter_buttons(State* state) {
         if (grouped) {
             settings.grouped_column = -1;
             settings.group_collapsed.clear();
-            Overlay::close((void*)state);
+            Overlay::close(state);
         }
         refresh_results(state);
     }
@@ -191,7 +191,7 @@ void update_filter_buttons(State* state) {
         if (grouped) {
             settings.grouped_column = -1;
             settings.group_collapsed.clear();
-            Overlay::close((void*)state);
+            Overlay::close(state);
         }
         refresh_results(state);
     }
@@ -205,7 +205,7 @@ void update_filter_buttons(State* state) {
             settings.sort_column = -1;
         }
         refresh_results(state);
-        Overlay::close((void*)state);
+        Overlay::close(state);
     }
     
 }
