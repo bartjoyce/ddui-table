@@ -166,16 +166,25 @@ void update(State* state) {
   
     // Process context menu
     {
-        int toggle = ContextMenu::process_action(state);
-        if (toggle == 0) {
+        int action = ContextMenu::process_action(state);
+        if (action == 0) {
             state->show_column_manager = !state->show_column_manager;
             repaint();
         }
-        if (toggle == 1) {
+        if (action == 1 && state->settings.grouped_column != -1) {
             state->settings_changed = true;
             state->settings.grouped_column = -1;
             state->settings.group_collapsed.clear();
             refresh_results(state);
+        } else if (action >= 1) {
+            auto custom_action = action - 1;
+            if (state->settings.grouped_column != -1) {
+                --custom_action;
+            }
+            state->source->handle_custom_context_menu_action(
+                state->selection.row, state->selection.column,
+                custom_action
+            );
         }
     }
     if (mouse_hit_secondary(0, 0, view.width, view.height)) {
@@ -192,6 +201,17 @@ void update(State* state) {
             item.checked = false;
             items.push_back(item);
         }
+
+        // Custom items
+        {
+            auto custom_items = state->source->get_custom_context_menu_items(
+                state->selection.row, state->selection.column
+            );
+            for (auto& item : custom_items) {
+                items.push_back(std::move(item));
+            }
+        }
+
         float x, y;
         mouse_position(&x, &y);
         ContextMenu::show(state, x, y, std::move(items));
@@ -425,7 +445,7 @@ void update_column_header(State* state, int j, float& x, float y) {
             state->filter_overlay.active_column = j;
             to_global_position(&state->filter_overlay.x, &state->filter_overlay.y,
                                x + settings.column_widths[j] - icon_size / 2,
-                               style::CELL_HEIGHT - 2 * MARGIN);
+                               y + style::CELL_HEIGHT - 2 * MARGIN);
             state->filter_overlay.value_list = prepare_filter_value_list(state, j);
             state->filter_overlay.scroll_area_state = ScrollArea::ScrollAreaState();
             Overlay::open(state);

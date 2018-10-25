@@ -133,9 +133,9 @@ static bool draw_filter_button(float x, float y, float width, float height, Butt
     fill_color(COLOR_TEXT_BUTTON);
     font_face("regular");
     font_size(18.0);
-    text_align(NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+    text_align(align::CENTER | align::MIDDLE);
     text(x + width / 2, y + height / 2, label, NULL);
-    text_align(NVG_ALIGN_LEFT);
+    text_align(align::LEFT);
 
     // Handle mouse hover
     if (mouse_over(x, y, width, height)) {
