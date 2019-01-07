@@ -169,7 +169,7 @@ void update(State* state) {
         int action = ContextMenu::process_action(state);
         if (action == 0) {
             state->show_column_manager = !state->show_column_manager;
-            repaint();
+            repaint("Table::update(1)");
         }
         if (action == 1 && state->settings.grouped_column != -1) {
             state->settings_changed = true;
@@ -245,7 +245,7 @@ void update(State* state) {
         state->selection.row != -1) {
         clear_selection(state);
         refresh_results(state);
-        repaint();
+        repaint("Overlay::update(2)");
     }
 
     // Handle selection change
@@ -259,7 +259,7 @@ void update(State* state) {
         state->editable_field.is_waiting_for_second_click = true;
         state->editable_field.click_time = std::chrono::high_resolution_clock::now();
         refresh_results(state);
-        repaint();
+        repaint("Overlay::update(3)");
     }
     if (state->selection.row != -1 && mouse_hit(0, 0, view.width, view.height)) {
         if (!has_focus(state)) {
@@ -268,7 +268,7 @@ void update(State* state) {
         mouse_hit_accept();
         clear_selection(state);
         refresh_results(state);
-        repaint();
+        repaint("Overlay::update(4)");
     }
 
 }
@@ -619,7 +619,7 @@ void update_group_headings(State* state) {
             state->settings_changed = true;
             settings.group_collapsed[heading.value] = !collapsed;
             refresh_results(state);
-            repaint();
+            repaint("Overlay::update_group_headings");
             return;
         }
         font_face("entypo");
@@ -997,13 +997,13 @@ void update_editable_field(State* state) {
         model.selection = { 0 };
         model.selection.b_index = model.lines.front().characters.size();
         model.version_count++;
-        repaint();
+        repaint("Overlay::update_editable_field(1)");
     }
     
     // Close the box on blur
     if (did_blur(&state->editable_field.state)) {
         stop_editing(state);
-        repaint();
+        repaint("Overlay::update_editable_field(2)");
     }
 
 }

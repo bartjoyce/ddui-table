@@ -232,7 +232,7 @@ void update_filter_values(State* state) {
                 filter.enabled = !filter.enabled;
                 filter.allowed_values.clear();
                 refresh_results(state);
-                repaint();
+                repaint("Table::update_filter_values(1)");
             }
             
             y += VALUE_HEIGHT;
@@ -299,7 +299,7 @@ void update_filter_values(State* state) {
             }
             
             refresh_results(state);
-            repaint();
+            repaint("Table::update_filter_values(2)");
         }
         
     });
