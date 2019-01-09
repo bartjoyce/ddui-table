@@ -65,6 +65,17 @@ void BasicModel::insert_row(std::vector<std::string> row) {
     data.push_back(std::move(row));
 }
 
+void BasicModel::replace_content(std::vector<std::string> headers,
+                                 std::vector<std::vector<std::string>> data) {
+    if (!key_.empty()) {
+        printf("Only allowed to use BasicModel::replace_content() on tables with no key.\n");
+        exit(1);
+    }
+    version_count++;
+    this->headers = std::move(headers);
+    this->data = std::move(data);
+}
+
 int get_header_index(Model* model, std::string header) {
     auto num_cols = model->columns();
     

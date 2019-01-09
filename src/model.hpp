@@ -38,6 +38,8 @@ class BasicModel : public Model {
         BasicModel(std::vector<std::string> headers,
                    std::vector<std::string> key);
         void insert_row(std::vector<std::string> row);
+        void replace_content(std::vector<std::string> headers,
+                             std::vector<std::vector<std::string>> data);
         bool editable;
 
         // Implement Model methods
