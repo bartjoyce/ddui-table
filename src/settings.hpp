@@ -24,12 +24,12 @@ struct Settings {
     std::vector<bool> column_enabled;
     std::vector<int> column_ordering;
 
-    int sort_column; // = -1 when unsorted
+    int sort_column = -1; // = -1 when unsorted
     bool sort_ascending;
 
     std::vector<ColumnFilter> filters;
 
-    int grouped_column; // -1 when ungrouped
+    int grouped_column = -1; // -1 when ungrouped
     std::map<std::string, bool> group_collapsed;
 };
 
