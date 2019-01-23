@@ -22,7 +22,7 @@ static void refresh_model(State* state);
 void refresh_results(State* state);
 static float calculate_table_width(State* table_state);
 static void update_function_bar(State* state, float* bar_height);
-static void update_table_content(State* state);
+static void update_table_content(State* state, float outer_width, float outer_height);
 static void update_column_separators(State* state);
 static void update_group_headings(State* state);
 static void update_table_headers(State* state);
@@ -229,9 +229,11 @@ void update(State* state) {
 
     // Update content
     sub_view(0, function_bar_height, view.width, view.height - function_bar_height);
+    auto outer_width = view.width;
+    auto outer_height = view.height;
     ScrollArea::update(&state->scroll_area_state,
-                       state->content_width, state->content_height, [state]() {
-        update_table_content(state);
+                       state->content_width, state->content_height, [state, outer_width, outer_height]() {
+        update_table_content(state, outer_width, outer_height);
         update_column_separators(state);
         update_group_headings(state);
         update_editable_field(state);
@@ -293,16 +295,21 @@ void update_function_bar(State* state, float* bar_height) {
     }
 
     *bar_height = y;
-  
+
 }
 
-void update_table_content(State* state) {
+void update_table_content(State* state, float outer_width, float outer_height) {
     auto model = state->source;
     auto& settings = state->settings;
     auto& results = state->results;
 
     auto W = view.width;
     auto H = view.height;
+    
+    auto min_x = state->scroll_area_state.scroll_x;
+    auto max_x = state->scroll_area_state.scroll_x + outer_width;
+    auto min_y = state->scroll_area_state.scroll_y;
+    auto max_y = state->scroll_area_state.scroll_y + outer_height;
 
     // Fill background
     begin_path();
@@ -330,13 +337,28 @@ void update_table_content(State* state) {
 
         int x = 0;
         for (int j : results.column_indices) {
+            
+            // Is this column visible? If not, skip it
+            if (x > max_x || x + settings.column_widths[j] < min_x) {
+                x += settings.column_widths[j] + style::SEPARATOR_WIDTH;
+                continue;
+            }
+            
             int y = style::CELL_HEIGHT;
             for (int i : results.row_indices) {
+
                 if (i == -1) {
                     // This row is a group heading
                     y += style::CELL_HEIGHT;
                     continue;
                 }
+                
+                // Is this row visible? If not, skip it
+                if (y > max_y || y + style::CELL_HEIGHT < min_y) {
+                    y += style::CELL_HEIGHT;
+                    continue;
+                }
+                
                 if (sel_i == i && sel_j == j) {
                     fill_color(style::COLOR_BG_CELL_ACTIVE);
                     begin_path();
