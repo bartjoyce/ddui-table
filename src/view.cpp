@@ -87,7 +87,8 @@ void update(State* state) {
     // Process key input
     if (has_key_event(state) &&
         state->selection.row != -1 &&
-        key_state.action == keyboard::ACTION_PRESS) {
+        (key_state.action == keyboard::ACTION_PRESS ||
+         key_state.action == keyboard::ACTION_REPEAT)) {
         
         auto& selection = state->selection;
         bool super = key_state.mods & keyboard::MOD_SUPER;
@@ -215,6 +216,39 @@ void update(State* state) {
         float x, y;
         mouse_position(&x, &y);
         ContextMenu::show(state, x, y, std::move(items));
+    }
+
+    // Scroll the current selection into view
+    if (state->selection.scroll_into_view && state->selection.row != -1) {
+        state->selection.scroll_into_view = false;
+
+        float x = 0, y = 0;
+
+        auto sel_i = state->selection.row;
+        auto sel_j = state->selection.column;
+        
+        const auto& settings = state->settings;
+        const auto& results = state->results;
+
+        for (auto j : results.column_indices) {
+            if (j == sel_j) {
+                break;
+            }
+            x += settings.column_widths[j] + style::SEPARATOR_WIDTH;
+        }
+
+        for (auto i : results.row_indices) {
+            if (i == sel_i) {
+                break;
+            }
+            y += style::CELL_HEIGHT;
+        }
+
+        ScrollArea::scroll_into_view(
+            &state->scroll_area_state,
+            x, y,
+            settings.column_widths[sel_j], 2 * style::CELL_HEIGHT
+        );
     }
 
     // Handle filter overlay
@@ -369,15 +403,6 @@ void update_table_content(State* state, float outer_width, float outer_height) {
                     state->editable_field.cell_x = x;
                     state->editable_field.cell_y = y;
                     state->editable_field.cell_width = settings.column_widths[j];
-
-                    if (state->selection.scroll_into_view) {
-                        state->selection.scroll_into_view = false;
-                        ScrollArea::scroll_into_view(
-                            &state->scroll_area_state,
-                            x, y - style::CELL_HEIGHT,
-                            settings.column_widths[j], 2 * style::CELL_HEIGHT
-                        );
-                    }
                 }
                 if (mouse_hit(x, y, settings.column_widths[j], style::CELL_HEIGHT)) {
                     state->selection.candidate_row = i;
