@@ -18,9 +18,9 @@ std::string export_table_to_csv(State* table) {
 
     auto& results = table->results;
     auto& model = *table->source;
-    
+
     std::stringstream ss;
-    
+
     // Step 1. Print table headings
     auto it = results.column_indices.begin();
     if (it < results.column_indices.end()) {
@@ -32,7 +32,7 @@ std::string export_table_to_csv(State* table) {
         print_value_safe(ss, model.header_text(*it));
     }
     ss << '\n';
-    
+
     // Step 2. Print all the rows
     for (auto i : results.row_indices) {
 
