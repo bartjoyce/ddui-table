@@ -378,6 +378,9 @@ void update_table_content(State* state, float outer_width, float outer_height) {
                 continue;
             }
             
+            // Does this column have a custom update function?
+            bool has_custom_update = model->column_has_custom_update_function(j);
+            
             int y = style::CELL_HEIGHT;
             for (int i : results.row_indices) {
 
@@ -411,9 +414,13 @@ void update_table_content(State* state, float outer_width, float outer_height) {
 
                 fill_color(style::COLOR_TEXT_ROW);
                 font_face("medium");
-                model->apply_cell_style(i, j, x, y, settings.column_widths[j], style::CELL_HEIGHT);
-                draw_centered_text_in_box(x, y, settings.column_widths[j], style::CELL_HEIGHT,
-                                          model->cell_text(i, j).c_str());
+                if (has_custom_update) {
+                    model->update_custom_cell(i, j, x, y, settings.column_widths[j], style::CELL_HEIGHT);
+                } else {
+                    model->apply_cell_style(i, j, x, y, settings.column_widths[j], style::CELL_HEIGHT);
+                    draw_centered_text_in_box(x, y, settings.column_widths[j], style::CELL_HEIGHT,
+                                              model->cell_text(i, j).c_str());
+                }
                 y += style::CELL_HEIGHT;
             }
             x += settings.column_widths[j] + style::SEPARATOR_WIDTH;

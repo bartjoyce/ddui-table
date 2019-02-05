@@ -28,6 +28,8 @@ class Model {
         virtual bool cell_editable(int row, int col) = 0;
         virtual void set_cell_text(int row, int col, std::string text) = 0;
         virtual void apply_cell_style(int row, int col, float x, float y, float w, float h) = 0;
+        virtual bool column_has_custom_update_function(int col) = 0;
+        virtual void update_custom_cell(int row, int col, float x, float y, float w, float h) = 0;
         virtual std::vector<ContextMenu::Item> get_custom_context_menu_items(int row, int col) = 0;
         virtual void handle_custom_context_menu_action(int row, int col, int action) = 0;
 };
@@ -69,6 +71,12 @@ class BasicModel : public Model {
             ++version_count;
         }
         void apply_cell_style(int row, int col, float x, float y, float w, float h) {
+            return;
+        }
+        bool column_has_custom_update_function(int col) {
+            return false;
+        }
+        void update_custom_cell(int row, int col, float x, float y, float w, float h) {
             return;
         }
         std::vector<ContextMenu::Item> get_custom_context_menu_items(int row, int col) {
