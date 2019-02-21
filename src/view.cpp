@@ -163,6 +163,26 @@ void update(State* state) {
                           state->results.row_indices[row_index],
                           state->results.column_indices[col_index]);
         }
+
+        // Copy from cell
+        if (!changed && super && key_state.key == keyboard::KEY_C) {
+            consume_key_event();
+            auto i = state->results.row_indices[row_index];
+            auto j = state->results.column_indices[col_index];
+            auto cell = state->source->cell_text(i, j);
+            set_clipboard_string(cell.c_str());
+        }
+        
+        // Paste into cell
+        if (!changed && super && key_state.key == keyboard::KEY_V) {
+            consume_key_event();
+            auto i = state->results.row_indices[row_index];
+            auto j = state->results.column_indices[col_index];
+            if (state->source->cell_editable(i, j)) {
+                state->source->set_cell_text(i, j, get_clipboard_string());
+            }
+            repaint("Table::update(1)");
+        }
     }
   
     // Process context menu
@@ -170,7 +190,7 @@ void update(State* state) {
         int action = ContextMenu::process_action(state);
         if (action == 0) {
             state->show_column_manager = !state->show_column_manager;
-            repaint("Table::update(1)");
+            repaint("Table::update(2)");
         }
         if (action == 1 && state->settings.grouped_column != -1) {
             state->settings_changed = true;
@@ -281,7 +301,7 @@ void update(State* state) {
         state->selection.row != -1) {
         clear_selection(state);
         refresh_results(state);
-        repaint("Overlay::update(2)");
+        repaint("Overlay::update(3)");
     }
 
     // Handle selection change
@@ -295,7 +315,7 @@ void update(State* state) {
         state->editable_field.is_waiting_for_second_click = true;
         state->editable_field.click_time = std::chrono::high_resolution_clock::now();
         refresh_results(state);
-        repaint("Overlay::update(3)");
+        repaint("Overlay::update(4)");
     }
     if (state->selection.row != -1 && mouse_hit(0, 0, view.width, view.height)) {
         if (!has_focus(state)) {
@@ -304,7 +324,7 @@ void update(State* state) {
         mouse_hit_accept();
         clear_selection(state);
         refresh_results(state);
-        repaint("Overlay::update(4)");
+        repaint("Overlay::update(5)");
     }
 
 }
