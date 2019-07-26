@@ -38,8 +38,7 @@ struct Model {
         // as a default, we have no custom rendering
         return USE_DEFAULT_RENDER;
     };
-    virtual std::vector<ContextMenu::Item> get_custom_context_menu_items(int row, int col) = 0;
-    virtual void handle_custom_context_menu_action(int row, int col, int action) = 0;
+    virtual void add_custom_context_menu_items(int row, int col, MenuBuilder::Menu& menu) = 0;
 };
 
 class BasicModel : public Model {
@@ -78,10 +77,7 @@ class BasicModel : public Model {
             data[row][col] = text;
             ++version_count;
         }
-        std::vector<ContextMenu::Item> get_custom_context_menu_items(int row, int col) {
-            return std::vector<ContextMenu::Item> {};
-        }
-        void handle_custom_context_menu_action(int row, int col, int action) {}
+        void add_custom_context_menu_items(int row, int col, MenuBuilder::Menu& menu) {}
 
     private:
         int version_count; // increments when state is changed

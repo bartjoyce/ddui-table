@@ -192,50 +192,41 @@ void update(State* state) {
             state->show_column_manager = !state->show_column_manager;
             repaint("Table::update(2)");
         }
-        if (action == 1 && state->settings.grouped_column != -1) {
+        if (action == 1) {
             state->settings_changed = true;
             state->settings.grouped_column = -1;
             state->settings.group_collapsed.clear();
             refresh_results(state);
-        } else if (action >= 1) {
-            auto custom_action = action - 1;
-            if (state->settings.grouped_column != -1) {
-                --custom_action;
-            }
-            state->source->handle_custom_context_menu_action(
-                state->selection.row, state->selection.column,
-                custom_action
-            );
         }
     }
     if (mouse_hit_secondary(0, 0, view.width, view.height)) {
-        std::vector<ContextMenu::Item> items;
-        {
-            ContextMenu::Item item;
-            item.label = "Manage Columns";
-            item.checked = state->show_column_manager;
-            items.push_back(item);
-        }
+        MenuBuilder mb;
+        auto ctx_menu = mb.menu();
+        
+        // Manage Columns item
+        ctx_menu.item("Manage Columns")
+                .checked(state->show_column_manager)
+                .action([state]() {
+                    state->show_column_manager = !state->show_column_manager;
+                });
+        
+        // Reset Grouping
         if (state->settings.grouped_column != -1) {
-            ContextMenu::Item item;
-            item.label = "Reset Grouping";
-            item.checked = false;
-            items.push_back(item);
+            ctx_menu.item("Reset Grouping")
+                    .action([state]() {
+                        state->settings_changed = true;
+                        state->settings.grouped_column = -1;
+                        state->settings.group_collapsed.clear();
+                        refresh_results(state);
+                    });
         }
-
+        
         // Custom items
-        {
-            auto custom_items = state->source->get_custom_context_menu_items(
-                state->selection.row, state->selection.column
-            );
-            for (auto& item : custom_items) {
-                items.push_back(std::move(item));
-            }
-        }
+        state->source->add_custom_context_menu_items(state->selection.row, state->selection.column, ctx_menu);
 
         float x, y;
         mouse_position(&x, &y);
-        ContextMenu::show(state, x, y, std::move(items));
+        ContextMenu::show(state, x, y, ctx_menu);
     }
 
     // Scroll the current selection into view
