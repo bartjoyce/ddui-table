@@ -57,9 +57,6 @@ State::State() {
     
     editable_field.is_open = false;
     editable_field.is_waiting_for_second_click = false;
-    editable_field.state.model = &editable_field.model;
-    editable_field.state.border_radius = 0;
-    editable_field.state.margin = 6;
     editable_field.model.regular_font = "regular";
     TextEdit::set_style(&editable_field.model, false, 14, rgb(0x000000));
 
@@ -1053,7 +1050,15 @@ void update_editable_field(State* state) {
 
     sub_view(state->editable_field.cell_x, state->editable_field.cell_y,
              state->editable_field.cell_width, style::CELL_HEIGHT);
-    PlainTextBox::update(&state->editable_field.state);
+    {
+        auto style = *PlainTextBox::get_global_styles();
+        style.border_radius = 0;
+        style.margin = 6;
+
+        PlainTextBox(&state->editable_field.state, &state->editable_field.model)
+            .set_styles(&style)
+            .update();
+    }
     restore();
     
     // Select all on focus

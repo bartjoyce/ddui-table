@@ -84,7 +84,7 @@ struct State {
         bool is_waiting_for_second_click;
         std::chrono::high_resolution_clock::time_point click_time;
         TextEdit::Model model;
-        PlainTextBox::PlainTextBoxState state;
+        PlainTextBox::State state;
         int row, column;
         float cell_x, cell_y, cell_width;
         std::string current_cell_text;
