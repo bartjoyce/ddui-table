@@ -21,6 +21,8 @@ struct Model {
         USE_DEFAULT_RENDER
     };
 
+    virtual ~Model() = default;
+
     virtual long ref() = 0; // returns a number that changes
                             // when the underlying data of the
                             // model changes.
