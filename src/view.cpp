@@ -359,6 +359,9 @@ void update_table_content(State* state, float outer_width, float outer_height) {
     rect(0, 0, W, H);
     fill();
 
+    // Set the text align to its default
+    text_align(align::LEFT | align::BASELINE);
+
     // Odd row backgrounds
     fill_color(style::COLOR_BG_ROW_ODD);
     for (int y = style::CELL_HEIGHT * 2; y < H + style::CELL_HEIGHT; y += style::CELL_HEIGHT * 2) {
