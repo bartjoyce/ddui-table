@@ -11,7 +11,7 @@
 
 #include <vector>
 #include <string>
-#include <ddui/views/ContextMenu>
+#include <ddui/views/Menu>
 
 namespace Table {
 
@@ -40,7 +40,6 @@ struct Model {
         // as a default, we have no custom rendering
         return USE_DEFAULT_RENDER;
     };
-    virtual void add_custom_context_menu_items(int row, int col, MenuBuilder::Menu& menu) = 0;
 };
 
 class BasicModel : public Model {
@@ -79,7 +78,6 @@ class BasicModel : public Model {
             data[row][col] = text;
             ++version_count;
         }
-        void add_custom_context_menu_items(int row, int col, MenuBuilder::Menu& menu) {}
 
     private:
         int version_count; // increments when state is changed
