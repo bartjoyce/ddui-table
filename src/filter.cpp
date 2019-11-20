@@ -212,20 +212,20 @@ void update_filter_buttons(State* state) {
 
 void update_filter_values(State* state) {
     using namespace style::filter_overlay;
-    
+
     auto inner_height = VALUE_HEIGHT * (1 + state->filter_overlay.value_list.size());
 
     ScrollArea::update(&state->filter_overlay.scroll_area_state, view.width, inner_height, [&]() {
-    
+
         auto j = state->filter_overlay.active_column;
         auto& value_list = state->filter_overlay.value_list;
         auto& filter = state->settings.filters[j];
-        
+
         int y = 0;
-        
+
         // "Select all" option
         {
-            
+
             auto clicked = draw_filter_value(y, !filter.enabled, "Select all");
             if (clicked) {
                 state->settings_changed = true;
@@ -234,10 +234,10 @@ void update_filter_values(State* state) {
                 refresh_results(state);
                 repaint("Table::update_filter_values(1)");
             }
-            
+
             y += VALUE_HEIGHT;
         }
-        
+
         // Draw divider
         {
             begin_path();
@@ -247,31 +247,36 @@ void update_filter_values(State* state) {
             stroke_width(1.0);
             stroke();
         }
-        
+
         // All value options
         bool value_was_clicked = false;
         std::string clicked_value;
-        
+
         for (auto& value : value_list) {
+            if (!rect_appears_in_clip_region(0, y, view.width, VALUE_HEIGHT)) {
+                y += VALUE_HEIGHT;
+                continue;
+            }
+
             auto active = !filter.enabled || filter.allowed_values.find(value) != filter.allowed_values.end();
-            
+
             auto clicked = draw_filter_value(y, active, value.c_str());
             if (clicked) {
                 value_was_clicked = true;
                 clicked_value = value;
             }
-            
+
             y += VALUE_HEIGHT;
         }
-        
+
         if (value_was_clicked) {
             auto active = !filter.enabled || filter.allowed_values.find(clicked_value) != filter.allowed_values.end();
             auto value = clicked_value;
-            
+
             if (!active) {
                 // Add the value
                 filter.allowed_values.insert(std::make_pair(value, true));
-                    
+
                 bool is_full = true;
                 for (auto& value : value_list) {
                     if (filter.allowed_values.find(value) == filter.allowed_values.end()) {
@@ -279,7 +284,7 @@ void update_filter_values(State* state) {
                         break;
                     }
                 }
-                
+
                 if (is_full) {
                     // We've selected all values, disable the filter
                     filter.enabled = false;
@@ -297,11 +302,11 @@ void update_filter_values(State* state) {
                     }
                 }
             }
-            
+
             refresh_results(state);
             repaint("Table::update_filter_values(2)");
         }
-        
+
     });
 }
 
