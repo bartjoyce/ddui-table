@@ -28,14 +28,14 @@ struct Model {
                             // model changes.
     virtual int columns() = 0;
     virtual int rows() = 0;
-    virtual std::string header_text(int col) = 0;
-    virtual std::string cell_text(int row, int col) = 0;
+    virtual const std::string& header_text(int col) = 0;
+    virtual const std::string& cell_text(int row, int col) = 0;
     virtual std::vector<int> key() = 0;
     virtual bool cell_editable(int row, int col) {
         // as a default, cells are not editable
         return false;
     };
-    virtual void set_cell_text(int row, int col, std::string text) = 0;
+    virtual void set_cell_text(int row, int col, const std::string& text) = 0;
     virtual RenderCellResult render_cell(int row, int col, bool is_selected) {
         // as a default, we have no custom rendering
         return USE_DEFAULT_RENDER;
@@ -62,10 +62,10 @@ class BasicModel : public Model {
         int rows() {
             return data.size();
         }
-        std::string header_text(int col) {
+        const std::string& header_text(int col) {
             return headers[col];
         }
-        std::string cell_text(int row, int col) {
+        const std::string& cell_text(int row, int col) {
             return data[row][col];
         }
         std::vector<int> key() {
@@ -74,7 +74,7 @@ class BasicModel : public Model {
         bool cell_editable(int row, int col) {
             return editable;
         }
-        void set_cell_text(int row, int col, std::string text) {
+        void set_cell_text(int row, int col, const std::string& text) {
             data[row][col] = text;
             ++version_count;
         }
